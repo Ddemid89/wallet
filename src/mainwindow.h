@@ -16,7 +16,8 @@ enum class WidgetType {
     AddExpens,
     AddTransfer,
     EditTransacts,
-    EditAccounts
+    EditAccounts,
+    CellIncDec
 };
 
 class Widgets;
@@ -32,6 +33,7 @@ public:
     void SetAddTransferWidget(Widgets* widget);
     void SetEditTransactsWidget(Widgets* widget);
     void SetEditAccountsWidget(Widgets* widget);
+    void SetCellIncDecWidget(Widgets* widget);
 
     MainWindow(Wallet& wallet, QWidget *parent = nullptr);
     ~MainWindow();
@@ -64,6 +66,7 @@ public:
 
         connect(back_, SIGNAL(clicked()), &m_window_, SLOT(go_to_first()));
     }
+    virtual void Deactivate();
 protected:
     Wallet& wallet_;
     MainWindow& m_window_;

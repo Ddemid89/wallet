@@ -45,7 +45,14 @@ void MainWindow::SetEditAccountsWidget(Widgets* widget) {
     widgets_index_[WidgetType::EditAccounts] = widgets_->count() - 1;
 }
 
-MainWindow::MainWindow(Wallet& wallet, QWidget *parent) : QMainWindow(parent)
+void MainWindow::SetCellIncDecWidget(Widgets* widget) {
+    widgets_->addWidget(widget);
+    widgets_index_[WidgetType::CellIncDec] = widgets_->count() - 1;
+}
+
+
+
+MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
                                                         , wallet_(wallet){
     setWindowTitle("Учет финансов (или типа того)");
     sbar_ = statusBar();
@@ -80,6 +87,9 @@ MainWindow::MainWindow(Wallet& wallet, QWidget *parent) : QMainWindow(parent)
     });
     m4->addAction("Добавить расходы", this, [this]{
         emit(this->change_window(WidgetType::AddExpens));
+    });
+    m4->addAction("Добавить расходы/доходы", this, [this]{
+        emit(this->change_window(WidgetType::CellIncDec));
     });
     m4->addAction("Добавить перевод", this, [this]{
         emit(this->change_window(WidgetType::AddExpens));
@@ -144,10 +154,25 @@ MainWindow::~MainWindow() {
 void MainWindow::change_window(WidgetType type) {
     size_t idx = widgets_index_.at(type);
 
+    if (idx == widgets_->currentIndex()) {
+        return;
+    }
+
+    auto cur_widget = qobject_cast<Widgets*>(widgets_->currentWidget());
+
+    if (cur_widget) {
+        cur_widget->Deactivate();
+    }
+
     widgets_->setCurrentIndex(idx);
 }
 
 void MainWindow::go_to_first() {
+    auto cur_widget = qobject_cast<Widgets*>(widgets_->currentWidget());
+
+    if (cur_widget) {
+        cur_widget->Deactivate();
+    }
     widgets_->setCurrentIndex(0);
 }
 
@@ -155,3 +180,7 @@ void MainWindow::show_status(const QString& txt) {
     sbar_->showMessage(txt, 60000);
 }
 
+
+void Widgets::Deactivate() {
+
+}

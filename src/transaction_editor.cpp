@@ -5,7 +5,7 @@
 #include <QListWidget>
 
 TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidget* parent)
-                                            :  Widgets(wallet, m_window, parent) {
+                                            : Widgets(wallet, m_window, parent) {
     QHBoxLayout* date_select_ = new QHBoxLayout;
     QHBoxLayout* type_select_ = new QHBoxLayout;
 
@@ -51,6 +51,8 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
         date_from_->setMaximumDate(date_to_->date());
     });
 
+    connect(list_, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(Edit(QListWidgetItem*)));
+
     connect(type_, SIGNAL(currentIndexChanged(int)), this, SLOT(FillTargets()));
     connect(show_data, SIGNAL(clicked()), this, SLOT(FillOps()));
 
@@ -93,6 +95,7 @@ void TransactionEditor::FillTargets() {
 
 void TransactionEditor::FillOps() {
     list_->clear();
+    trns_ptrs_.clear();
 
     QDate from = date_from_->date();
     QDate to = date_to_->date();
@@ -128,7 +131,16 @@ void TransactionEditor::FillOps() {
     for (auto& op : ops) {
         op->Visit(tr);
         list_->addItem(tr.GetResult());
+        trns_ptrs_.push_back(op);
     }
+}
+
+void TransactionEditor::Edit(QListWidgetItem*) {
+    size_t idx = list_->currentRow();
+    TransactBase* op = trns_ptrs_.at(idx);
+
+
+    qDebug() << op->Sum().String();
 }
 
 const QVector<CategoryInfo> TransactionEditor::GetCats() const {

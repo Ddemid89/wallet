@@ -3,11 +3,6 @@
 
 #include <QWidget>
 
-class first_w
-{
-    Q_OBJECT
-public:
-    first_w();
-};
+
 
 #endif // FIRST_W_H

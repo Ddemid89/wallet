@@ -9,6 +9,11 @@
 #include "mainwindow.h"
 #include "model.h"
 
+class ModalEditor : public QWidget {
+
+};
+
+
 class TransactionEditor : public Widgets {
     Q_OBJECT
 public:
@@ -17,6 +22,7 @@ public:
 private slots:
     void FillTargets();
     void FillOps();
+    void Edit(QListWidgetItem*);
 signals:
 private:
     void FillData();
@@ -35,6 +41,8 @@ private:
 
     QVector<size_t> accs_idxs_;
     QVector<size_t> cats_idxs_;
+
+    QVector<TransactBase*> trns_ptrs_;
 
     void showEvent(QShowEvent *event) override;
 };

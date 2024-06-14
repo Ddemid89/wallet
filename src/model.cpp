@@ -90,7 +90,13 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
     transacts_DELETE_THIS.AddTransaction(transact);
 
     auto& acc = *accs_index_.at(transact.acc_idx);
-    acc += transact.sum;
+
+    if (transact.inc && transact.sum.Kopek() > 0 || !transact.inc && transact.sum.Kopek() < 0) {
+        acc += transact.sum;
+    } else {
+        acc -= transact.sum;
+    }
+
 }
 
 void Wallet::AddTransfer(transactions_manager::TransferAdder transfer) {
@@ -249,53 +255,6 @@ Category& Wallet::GetCategoryById(size_t id) {
 
     throw std::invalid_argument("Нет категории с таким ID!");
 }
-
-//QVector<TransactBase*> Wallet::GetTransacts(const TransactIndex& index, size_t number, bool late_to_early) const {
-//    number = std::min(index.size(), number);
-
-//    QVector<TransactBase*> result(number);
-
-//    auto op = [](const std::unique_ptr<TransactBase>& ptr){
-//        return ptr.get();
-//    };
-
-//    if (late_to_early) {
-//        auto end = index.cbegin();
-//        std::advance(end, number);
-//        std::transform(index.cbegin(), end, result.begin(), op);
-//    } else {
-//        auto end = index.crbegin();
-//        std::advance(end, number);
-//        std::transform(index.crbegin(), end, result.begin(), op);
-//    }
-
-//    return result;
-//}
-
-//QVector<TransactBase*> Wallet::GetTransactFiltred
-//    (const TransactIndex& transacts, QDate from, QDate to, size_t acc, size_t cat) const {
-//    QVector<TransactBase*> result;
-
-//    bool any_acc = acc == 0;
-//    bool any_cat = cat == 0;
-
-//    std::unique_ptr<TransactBase> from_ptr = std::make_unique<Transfer>(0, 0, from, Money{0}, 0);
-
-//    detail::TransactPredicat pred(any_acc, any_cat, acc, cat, GetCategoryChilds(cat));
-
-//    auto it = transacts.lower_bound(from_ptr);
-
-//    while(it != transacts.end() && (*it)->Date() <= to) {
-//        auto& tr = *it;
-//        tr->Visit(pred);
-//        if (pred.GetRes()) {
-//            result.push_back(tr.get());
-//        }
-//        it++;
-//    }
-
-//    return result;
-//}
 
 void Wallet::AddCatAndChilds(size_t index, QVector<CategoryInfo>& result, int indent, bool inc, bool dec) const {
     const Category& cat = *cats_index_.at(index);

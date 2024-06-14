@@ -25,8 +25,8 @@ void Debet::operator+=(Money rhs) {
     sum_ += rhs;
 }
 
-void Debet::operator-=([[maybe_unused]]Money rhs) {
-
+void Debet::operator-=(Money rhs) {
+    sum_ -= rhs;
 }
 
 void Debet::Visit(AccVisitorInterface& widget) {
@@ -100,7 +100,7 @@ void OverdraftCard::operator+=(Money rhs) {
     sum_ += rhs;
 }
 
-void OverdraftCard::operator-=([[maybe_unused]]Money rhs) {
+void OverdraftCard::operator-=(Money rhs) {
     sum_ -= rhs;
 }
 

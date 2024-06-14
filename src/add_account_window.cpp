@@ -63,7 +63,7 @@ AddAccountWindow::AddAccountWindow(Wallet& wallet, MainWindow& m_window, QWidget
 
     FillData();
 
-    setLayout(layout_);
+    //setLayout(layout_);
 }
 
 void AddAccountWindow::select() {
