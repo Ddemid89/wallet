@@ -11,31 +11,35 @@ TransactionsManager::~TransactionsManager() {
 }
 
 void TransactionsManager::AddTransaction(TransactionAdder& trs) {
-    Load(trs.date);
     size_t new_id = GetNewId();
 
-    transacts_.emplace(std::make_unique<Transaction>(
-                           new_id,
-                           trs.acc_idx,
-                           trs.date,
-                           trs.sum,
-                           trs.cat_idx,
-                           trs.inc
-                           ));
-    qDebug() << transacts_.size();
+    AddTransaction(trs, new_id);
 }
 
 void TransactionsManager::AddTransfer(TransferAdder& trs) {
-    Load(trs.date);
     size_t new_id = GetNewId();
 
-    transacts_.emplace(std::make_unique<Transfer>(
-                           new_id,
-                           trs.from_idx,
-                           trs.date,
-                           trs.sum,
-                           trs.to_idx
-                           ));
+    AddTransfer(trs, new_id);
+}
+
+void TransactionsManager::AddTransaction(TransactionAdder &trs, size_t idx) {
+    Load(trs.date);
+
+    TransactBase* ptr = new Transaction(idx, trs.acc_idx, trs.date,
+                                        trs.sum, trs.cat_idx, trs.inc);
+    trns_idx_[idx] = ptr;
+
+    transacts_.emplace(ptr);
+}
+
+void TransactionsManager::AddTransfer(TransferAdder &trs, size_t idx) {
+    Load(trs.date);
+
+    TransactBase* ptr = new Transfer(idx, trs.from_idx, trs.date,
+                                     trs.sum, trs.to_idx);
+    trns_idx_[idx] = ptr;
+
+    transacts_.emplace(ptr);
 }
 
 QVector<TransactBase*> TransactionsManager::GetTransacts(TransactType type, size_t number, bool late_to_early) {
@@ -64,6 +68,30 @@ QVector<TransactBase*> TransactionsManager::GetTransactFiltred(QDate from, QDate
     }
 
     return result;
+}
+
+TransactBase* TransactionsManager::FindTransact(size_t idx) {
+    std::unique_ptr<TransactBase> tmp;
+    return trns_idx_.at(idx);
+}
+
+void TransactionsManager::DeleteTransact(size_t idx) {
+    std::unique_ptr<TransactBase> tmp;
+
+    auto trns = trns_idx_.at(idx);
+
+    tmp.reset(trns);
+    auto it = transacts_.find(tmp);
+    tmp.release();
+
+    auto idx_it = trns_idx_.find(idx);
+
+    if (it != transacts_.end() || idx_it == trns_idx_.end()) {
+        transacts_.erase(it);
+        trns_idx_.erase(idx_it);
+    } else {
+        throw std::runtime_error("Something wrong in TransactionManager::DeleteTransact");
+    }
 }
 
 

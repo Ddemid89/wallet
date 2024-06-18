@@ -13,6 +13,11 @@
 #include <QDateEdit>
 #include "model.h"
 #include "mainwindow.h"
+#include <QScrollBar>
+
+const int RECENT_LINES = 10;
+
+using NamesIndex = std::unordered_map<size_t, QString>;
 
 enum class OpType{
     Inc,
@@ -26,6 +31,19 @@ struct CellTransaction {
     double sum;
     size_t from;
     size_t to;
+};
+
+class LabelRow : public QWidget {
+    Q_OBJECT
+public:
+    LabelRow(QWidget* parent = nullptr);
+    void SetTransaction(TransactBase* trns, const NamesIndex& acc_names, const NamesIndex& cat_names);
+private:
+    QLabel* date_;
+    QLabel* op_;
+    QLabel* sum_;
+    QLabel* from_;
+    QLabel* to_;
 };
 
 class Row : public QWidget {
@@ -56,8 +74,8 @@ private:
     QComboBox* op_         = new QComboBox;
     QComboBox* acc_from_   = new QComboBox;
     QComboBox* acc_cat_to_ = new QComboBox;
-};
 
+};
 
 class CellWindow : public Widgets {
     Q_OBJECT
@@ -68,15 +86,24 @@ public:
 private slots:
     void AddRow();
     void PopRow();
+    void FillRecent();
 private:
     void AddTransaction(CellTransaction&& ct);
 
+    void FillRecentLine(size_t line_idx, TransactBase* trns);
+
     QVector<Row*> rows_;
 
+    QScrollBar* scroll_        = new QScrollBar;
     QScrollArea* s_area_       = new QScrollArea;
     QWidget* container_        = new QWidget;
     QVBoxLayout* main_layout_  = new QVBoxLayout;
     QVBoxLayout* cells_layout_ = new QVBoxLayout;
+
+    QVector<LabelRow*> recent_ops_lines_;
+    NamesIndex acc_id_to_name_;
+    NamesIndex cat_id_to_name_;
+    QVector<TransactBase*> recent_ops_;
 };
 
 #endif // CELL_W_H

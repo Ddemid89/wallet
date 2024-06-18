@@ -61,6 +61,14 @@ void Credit::Visit(AccVisitorInterface& widget) {
     widget.SetAccount(*this);
 }
 
+Money Credit::GetPayment() const {
+    return payment_;
+}
+
+void Credit::SetPayment(Money money) {
+    payment_ = money;
+}
+
 Deposit::Deposit(SimpleAcc acc, double percent_rate, int payday)
     : PercentBase(std::move(acc), percent_rate, payday){}
 
@@ -122,6 +130,14 @@ Money OverdraftCard::Debt() const {
         return dif;
     }
     return Money{0};
+}
+
+Money OverdraftCard::GetOverdraft() const {
+    return overdraft_;
+}
+
+void OverdraftCard::SetOverdraft(Money money) {
+    overdraft_ = money;
 }
 
 Category::Category(size_t idx, QString name, bool inc, bool dec)
@@ -221,8 +237,20 @@ Money::Money(long cop) {
     kopek_ = cop;
 }
 
+Money::Money(double cop) {
+    kopek_ = cop * 100;
+}
+
+Money::Money(qint64 val) {
+    kopek_ = val;
+}
+
+Money::Money(int val) {
+    kopek_ = val;
+}
+
 double Money::Double() const {
-    return kopek_ / 100 + (kopek_ % 100) / 100;
+    return kopek_ / 100 + static_cast<double>(kopek_ % 100) / 100;
 }
 
 long Money::Kopek() const {
@@ -239,6 +267,10 @@ void Money::operator+=(const Money other) {
 
 void Money::operator-=(const Money other) {
     kopek_ -= other.kopek_;
+}
+
+bool Money::operator==(const Money other) const {
+    return kopek_ == other.kopek_;
 }
 
 QString Money::String() const {

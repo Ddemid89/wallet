@@ -25,11 +25,15 @@ class Money {
 public:
     Money() = default;
     Money(long cop);
+    Money(double val);
+    Money(qint64 val);
+    Money(int val);
     double Double() const;
     long Kopek() const;
     void FromDouble(double val);
     void operator+=(const Money other);
     void operator-=(const Money other);
+    bool operator==(const Money other) const;
     QString String() const;
     QString StringAbs() const;
     Money operator-(Money rhs) const;
@@ -38,8 +42,6 @@ public:
 private:
     long kopek_{0};
 };
-
-Money operator""_money(long double val);
 
 class AccountBase;
 class Debet;
@@ -83,6 +85,18 @@ public:
 
     virtual void Visit(AccVisitorInterface& widget) = 0;
 
+    void SetName(const QString& name) {
+        name_ = name;
+    }
+
+    void SetSum(Money money) {
+        sum_ = money;
+    }
+
+    void SetConsider(bool consider) {
+        consider_ = consider;
+    }
+
     void SetDeleted(bool deleted) {
         deleted_ = deleted;
     }
@@ -90,6 +104,11 @@ public:
     bool IsDeleted() const {
         return deleted_;
     }
+
+    bool IsConsider() const {
+        return consider_;
+    }
+
 protected:
     size_t idx_;
     QString name_;
@@ -132,6 +151,22 @@ public:
         , percent_rate_(repr.perc_rate)
         , payday_(repr.payday)
         , next_pay_(repr.next_pay) {}
+    double GetPercentRate() const {
+        return percent_rate_;
+    }
+
+    void SetPercentRate(double val) {
+        percent_rate_ = val;
+    }
+
+    int GetPayDay() const {
+        return payday_;
+    }
+
+    void SetPayDay(int val) {
+        payday_ = val;
+    }
+
 protected:
     ~PercentBase() override = default;
     double percent_rate_;
@@ -150,6 +185,8 @@ public:
     void operator+=(Money rhs) override;
     void operator-=(Money rhs) override;
     void Visit(AccVisitorInterface& widget) override;
+    Money GetPayment() const;
+    void SetPayment(Money money);
     model_representation::AccountRepresentation GetRepresentation() const override {
         model_representation::AccountRepresentation res;
 
@@ -212,6 +249,8 @@ public:
     void Visit(AccVisitorInterface& widget) override;
     Money OwnSum() const;
     Money Debt() const;
+    Money GetOverdraft() const;
+    void SetOverdraft(Money money);
     model_representation::AccountRepresentation GetRepresentation() const override {
         model_representation::AccountRepresentation res;
 

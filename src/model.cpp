@@ -3,13 +3,17 @@
 #include <QDebug>
 #include <algorithm>
 
-Wallet::Wallet(transactions_manager::LoaderInterface& loader) : transacts_DELETE_THIS(loader){
+Wallet::Wallet(transactions_manager::LoaderInterface& loader) : transacts_(loader){
     categories_.emplace_back(0, "Все категории", true, true);
     cats_index_[0] = &categories_.back();
 }
 
 const std::vector<std::unique_ptr<AccountBase>>& Wallet::GetAccounts() const {
     return accounts_;
+}
+
+AccountBase *Wallet::GetOneAccount(size_t id) const {
+    return accs_index_.at(id);
 }
 
 QStringList Wallet::GetAccountsNames() const {
@@ -38,6 +42,32 @@ void Wallet::AddAccount(AccAdder account) {
     size_t new_index = GetAccIdx();
     accounts_.push_back(MakeAccount(account, new_index));
     accs_index_[new_index] = accounts_.back().get();
+}
+
+size_t Wallet::AccounsExist() const {
+    size_t res = 0;
+    for (auto& acc : accounts_) {
+        res += !acc->IsDeleted();
+    }
+
+    return res;
+}
+
+void Wallet::ChangeAccountType(AccAdder acc, size_t acc_id) {
+    std::unique_ptr<AccountBase>& acc_ptr = accounts_.at(acc_id - 1);
+
+    bool deleted = acc_ptr->IsDeleted();
+
+    if (acc_ptr->GetIndex() != acc_id) {
+        throw std::runtime_error("Account index not equal index in vector in Wallet::ChangeAccountType.");
+    }
+
+    auto new_ptr = MakeAccount(acc, acc_id);
+    auto tmp_ptr = new_ptr.get();
+    acc_ptr.swap(new_ptr);
+    accs_index_[acc_id] = tmp_ptr;
+
+    tmp_ptr->SetDeleted(deleted);
 }
 
 QVector<CategoryInfo> Wallet::GetCategories(bool arrive) const {
@@ -87,11 +117,11 @@ std::set<size_t> Wallet::GetCategoryChilds(size_t cat_id) const {
 }
 
 void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
-    transacts_DELETE_THIS.AddTransaction(transact);
+    transacts_.AddTransaction(transact);
 
     auto& acc = *accs_index_.at(transact.acc_idx);
 
-    if (transact.inc && transact.sum.Kopek() > 0 || !transact.inc && transact.sum.Kopek() < 0) {
+    if ((transact.inc && transact.sum.Kopek() > 0) || (!transact.inc && transact.sum.Kopek() < 0)) {
         acc += transact.sum;
     } else {
         acc -= transact.sum;
@@ -100,7 +130,31 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
 }
 
 void Wallet::AddTransfer(transactions_manager::TransferAdder transfer) {
-    transacts_DELETE_THIS.AddTransfer(transfer);
+    transacts_.AddTransfer(transfer);
+
+    auto& from = *accs_index_.at(transfer.from_idx);
+    auto& to = *accs_index_.at(transfer.to_idx);
+
+    from -= transfer.sum;
+    to += transfer.sum;
+
+}
+
+void Wallet::AddTransaction(transactions_manager::TransactionAdder transact, size_t idx) {
+    transacts_.AddTransaction(transact, idx);
+
+    auto& acc = *accs_index_.at(transact.acc_idx);
+
+    if ((transact.inc && transact.sum.Kopek() > 0) || (!transact.inc && transact.sum.Kopek() < 0)) {
+        acc += transact.sum;
+    } else {
+        acc -= transact.sum;
+    }
+
+}
+
+void Wallet::AddTransfer(transactions_manager::TransferAdder transfer, size_t idx) {
+    transacts_.AddTransfer(transfer, idx);
 
     auto& from = *accs_index_.at(transfer.from_idx);
     auto& to = *accs_index_.at(transfer.to_idx);
@@ -111,32 +165,32 @@ void Wallet::AddTransfer(transactions_manager::TransferAdder transfer) {
 }
 
 QVector<TransactBase*> Wallet::GetTransacts(TransactType type, size_t number, bool late_to_early) const {
-    return transacts_DELETE_THIS.GetTransacts(type, number, late_to_early);
+    return transacts_.GetTransacts(type, number, late_to_early);
 }
 
 QVector<TransactBase*> Wallet::GetIncomes(size_t number, bool late_to_early) const {
-    return transacts_DELETE_THIS.GetTransacts(TransactType::Income, number, late_to_early);
+    return transacts_.GetTransacts(TransactType::Income, number, late_to_early);
 }
 
 QVector<TransactBase*> Wallet::GetExpenses(size_t number, bool late_to_early) const {
-    return transacts_DELETE_THIS.GetTransacts(TransactType::Expense, number, late_to_early);
+    return transacts_.GetTransacts(TransactType::Expense, number, late_to_early);
 }
 
 QVector<TransactBase*> Wallet::GetTransfers(size_t number, bool late_to_early) const {
-    return transacts_DELETE_THIS.GetTransacts(TransactType::Transfer, number, late_to_early);
+    return transacts_.GetTransacts(TransactType::Transfer, number, late_to_early);
 }
 
 QVector<TransactBase*> Wallet::GetIncDecTransacts(bool arrive, size_t number, bool late_to_early) const {
     if (arrive) {
-        return transacts_DELETE_THIS.GetTransacts(TransactType::Income, number, late_to_early);
+        return transacts_.GetTransacts(TransactType::Income, number, late_to_early);
     } else {
-        return transacts_DELETE_THIS.GetTransacts(TransactType::Expense, number, late_to_early);
+        return transacts_.GetTransacts(TransactType::Expense, number, late_to_early);
     }
 }
 
 QVector<TransactBase*> Wallet::GetTransactFiltred
 (QDate from, QDate to, TransactType type, size_t acc_id, size_t cat_id) const {
-    auto trs = transacts_DELETE_THIS.GetTransactFiltred(from, to, type);
+    auto trs = transacts_.GetTransactFiltred(from, to, type);
 
     bool any_acc = acc_id == 0;
     bool any_cat = cat_id == 0;
@@ -179,12 +233,65 @@ void Wallet::RestoreCategories(model_representation::CategoriesData&& cats) {
     }
 }
 
+bool Wallet::IsAccountDeleted(size_t acc_id) {
+    auto it = accs_index_.find(acc_id);
+    AccountBase* acc = it->second;
+
+    return acc->IsDeleted();
+}
+
 void Wallet::SetAccountDeleted(size_t acc_id, bool deleted) {
     auto it = accs_index_.find(acc_id);
 
     if (it != accs_index_.end()) {
         it->second->SetDeleted(deleted);
     }
+}
+
+void Wallet::DeleteTransaction(size_t idx) {
+    auto trns = transacts_.FindTransact(idx);
+    auto trn = dynamic_cast<Transaction*>(trns);
+
+    if (trn) {
+        AccountBase* acc = accs_index_.at(trn->AccountFromIdx());
+
+        if (trn->IsIncome()) {
+            *acc -= trn->Sum();
+        } else {
+            *acc += trn->Sum();
+        }
+
+    } else {
+        auto trf = dynamic_cast<Transfer*>(trns);
+
+        if (trf) {
+            AccountBase* from = accs_index_.at(trf->AccountFromIdx());
+            AccountBase* to = accs_index_.at(trf->AccountToIdx());
+
+            *from += trf->Sum();
+            *to   -= trf->Sum();
+
+        } else {
+            throw std::runtime_error("Something wrong in Wallet::DeleteTransaction");
+        }
+    }
+
+
+    transacts_.DeleteTransact(idx);
+}
+
+TransactBase *Wallet::FindTransact(size_t idx) {
+    return transacts_.FindTransact(idx);
+}
+
+void Wallet::EditTransact(size_t idx, transactions_manager::TransactionAdder& adder) {
+    DeleteTransaction(idx);
+    AddTransaction(adder, idx);
+}
+
+void Wallet::EditTransact(size_t idx, transactions_manager::TransferAdder& adder) {
+    DeleteTransaction(idx);
+    AddTransfer(adder, idx);
 }
 
 void Wallet::RestoreOneAccount(model_representation::AccountRepresentation&& acc) {

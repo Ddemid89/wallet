@@ -40,11 +40,6 @@ void MainWindow::SetEditTransactsWidget(Widgets* widget) {
     widgets_index_[WidgetType::EditTransacts] = widgets_->count() - 1;
 }
 
-void MainWindow::SetEditAccountsWidget(Widgets* widget) {
-    widgets_->addWidget(widget);
-    widgets_index_[WidgetType::EditAccounts] = widgets_->count() - 1;
-}
-
 void MainWindow::SetCellIncDecWidget(Widgets* widget) {
     widgets_->addWidget(widget);
     widgets_index_[WidgetType::CellIncDec] = widgets_->count() - 1;
@@ -71,9 +66,6 @@ MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
     m2->addAction("Добавить", this, [this](){
         emit(this->change_window(WidgetType::AddAccount));
     });
-    m2->addAction("Редактировать", this, [this]{
-        emit(this->change_window(WidgetType::EditAccounts));
-    });
 
     QMenu* m3 = new QMenu("Категории");
     m3->addAction("Добавить", this, [this]{
@@ -88,11 +80,8 @@ MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
     m4->addAction("Добавить расходы", this, [this]{
         emit(this->change_window(WidgetType::AddExpens));
     });
-    m4->addAction("Добавить расходы/доходы", this, [this]{
+    m4->addAction("Добавить расходы/доходы/переводы", this, [this]{
         emit(this->change_window(WidgetType::CellIncDec));
-    });
-    m4->addAction("Добавить перевод", this, [this]{
-        emit(this->change_window(WidgetType::AddExpens));
     });
     m4->addAction("Редактировать", this, [this]{
         emit(this->change_window(WidgetType::EditTransacts));
@@ -154,7 +143,7 @@ MainWindow::~MainWindow() {
 void MainWindow::change_window(WidgetType type) {
     size_t idx = widgets_index_.at(type);
 
-    if (idx == widgets_->currentIndex()) {
+    if (static_cast<int>(idx) == widgets_->currentIndex()) {
         return;
     }
 

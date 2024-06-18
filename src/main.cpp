@@ -10,7 +10,6 @@
 #include "transaction_editor.h"
 #include "serialization.h"
 #include "binary_loader.h"
-#include "account_edit.h"
 #include "cell_w.h"
 
 const QString ACC_FILE = "../../data/accs.bin";
@@ -32,7 +31,6 @@ int main(int argc, char *argv[]) {
     w.SetAddExpenseWidget(new AddIncDec(wallet, w, false));
     w.SetAddTransferWidget(new AddTransferWindow(wallet, w));
     w.SetEditTransactsWidget(new TransactionEditor(wallet, w));
-    w.SetEditAccountsWidget(new AccountEdit(wallet, w));
     w.SetCellIncDecWidget(new CellWindow(wallet, w));
     w.setFixedSize({800, 600});
 

@@ -4,19 +4,18 @@
 #include <QHBoxLayout>
 #include <QMessageBox>
 #include <QSpacerItem>
-
-
+#include <QScrollBar>
 
 namespace {
-QLabel* GetLabel(const QString& txt, int w = 0) {
+QLabel* GetLabel(const QString& txt, int w = 0, bool bold = true, int frame = 2) {
     QLabel* res = new QLabel(txt);
     if (w != 0) {
         res->setFixedWidth(w);
     }
-    res->setFrameStyle(2);
+    res->setFrameStyle(frame);
     res->setAlignment(Qt::AlignCenter);
     auto fnt = res->font();
-    fnt.setBold(true);
+    fnt.setBold(bold);
     res->setFont(fnt);
     return res;
 }
@@ -25,10 +24,30 @@ QLabel* GetLabel(const QString& txt, int w = 0) {
 CellWindow::CellWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent) : Widgets(wallet, m_window, parent) {
     QHBoxLayout* head = new QHBoxLayout;
 
+    QHBoxLayout* recent = new QHBoxLayout;
+    QVBoxLayout* ops    = new QVBoxLayout;
+
+    scroll_->setFixedHeight(170);
+    scroll_->setFixedWidth(15);
+
+    for (int i = 0; i < RECENT_LINES; ++i) {
+        recent_ops_lines_.push_back(new LabelRow);
+    }
+
+    for (auto row : recent_ops_lines_) {
+        ops->addWidget(row);
+    }
+
+    scroll_->setContentsMargins(0, 0, 0, 0);
+
+    recent->addLayout(ops);
+    recent->addWidget(scroll_);
+
     layout_->addSpacerItem(new QSpacerItem(500, 10));
     layout_->setSpacing(0);
     head->setContentsMargins(0, 0, 0, 0);
     layout_->addLayout(head);
+    layout_->addLayout(recent);
     layout_->addWidget(s_area_);
 
     s_area_->setWidget(container_);
@@ -65,7 +84,6 @@ CellWindow::CellWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent) : 
 
     main_layout_->addLayout(button_layout);
     main_layout_->setSpacing(0);
-
 }
 
 void CellWindow::Deactivate() {
@@ -91,11 +109,21 @@ void CellWindow::Deactivate() {
 }
 
 void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
-    if (wallet_.GetAccounts().empty()) {
+    if (wallet_.AccounsExist() == 0) {
         QMessageBox::warning(0, "Ошибка", "Для создания транзакции должен существовать хотя-бы один счет и хотя-бы одна категория трат.");
         back_->click();
         return;
     }
+    acc_id_to_name_.clear();
+    cat_id_to_name_.clear();
+    for (const auto& acc : wallet_.GetAccounts()) {
+        acc_id_to_name_[acc->GetIndex()] = acc->GetName();
+    }
+    for (const auto& cat : wallet_.GetAllCategories()) {
+        cat_id_to_name_[cat.idx] = cat.name;
+    }
+    recent_ops_ = wallet_.GetTransacts(TransactType::All, 50, true);
+    FillRecent();
 }
 
 void CellWindow::AddRow() {
@@ -126,6 +154,14 @@ void CellWindow::PopRow() {
     rows_.pop_back();
 }
 
+void CellWindow::FillRecent() {
+    size_t offset = scroll_->value();
+
+    for (int i = 0; i < qMin(RECENT_LINES, recent_ops_.size()); ++i) {
+        FillRecentLine(i, recent_ops_.at(i + offset));
+    }
+}
+
 void CellWindow::AddTransaction(CellTransaction&& ct) {
     if (ct.type == OpType::Transfer) {
         transactions_manager::TransferAdder adder;
@@ -146,6 +182,14 @@ void CellWindow::AddTransaction(CellTransaction&& ct) {
     }
 }
 
+void CellWindow::FillRecentLine(size_t line_idx, TransactBase *trns) {
+    Q_ASSERT(line_idx < RECENT_LINES);
+
+    LabelRow& line = *recent_ops_lines_[line_idx];
+
+    line.SetTransaction(trns, acc_id_to_name_, cat_id_to_name_);
+}
+
 Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget *parent)
     : QWidget{parent}, wallet_{wallet} {
     QHBoxLayout* layout = new QHBoxLayout(this);
@@ -162,7 +206,7 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     connect(op_, &QComboBox::currentIndexChanged, this, &Row::ChangeOp);
     op_->addItem("Расход");
     op_->addItem("Доход");
-    if (wallet_.GetAccounts().size() > 1) {
+    if (wallet_.AccounsExist() > 1) {
         op_->addItem("Перевод");
     }
     op_->setFixedWidth(85);
@@ -183,6 +227,7 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     date_label_->setFixedWidth(80);
     date_label_->setDisplayFormat("dd.MM.yy");
     date_label_->setDate(date);
+    date_label_->setMaximumDate(QDate::currentDate());
 
     FillAcs(*acc_from_);
 
@@ -191,7 +236,6 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     acc_cat_to_->setCurrentIndex(cat);
 
     setContentsMargins(0, 0, 0, 0);
-
 }
 
 CellTransaction Row::Get() {
@@ -310,4 +354,33 @@ void Row::FillCats(bool inc) {
         cat_idx_.push_back(cat.idx);
     }
 
+}
+
+LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
+    QHBoxLayout* layout_ = new QHBoxLayout;
+
+    date_ = GetLabel("-", 81,  false, 1);
+    op_   = GetLabel("-", 85,  false, 1);
+    sum_  = GetLabel("-", 120, false, 1);
+    from_ = GetLabel("-", 150, false, 1);
+    to_   = GetLabel("-", 0,   false, 1);
+
+    layout_->setContentsMargins(0, 0, 0, 0);
+    layout_->setSpacing(0);
+
+    layout_->addWidget(date_);
+    layout_->addWidget(op_);
+    layout_->addWidget(sum_);
+    layout_->addWidget(from_);
+    layout_->addWidget(to_);
+
+    setContentsMargins(0, 0, 0, 0);
+
+    setLayout(layout_);
+}
+
+void LabelRow::SetTransaction(TransactBase *trns, const NamesIndex& acc_names, const NamesIndex& cat_names) {
+    date_->setText(trns->Date().toString("dd.MM.yy"));
+    sum_->setText(trns->Sum().StringAbs());
+    from_->setText(acc_names.at(trns->AccountFromIdx()));
 }

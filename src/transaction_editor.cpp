@@ -1,6 +1,7 @@
 #include "transaction_editor.h"
 
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QPushButton>
 #include <QListWidget>
 
@@ -51,10 +52,25 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
         date_from_->setMaximumDate(date_to_->date());
     });
 
-    connect(list_, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(Edit(QListWidgetItem*)));
+    connect(list_, &QListWidget::itemDoubleClicked, this, &TransactionEditor::Edit);
 
     connect(type_, SIGNAL(currentIndexChanged(int)), this, SLOT(FillTargets()));
     connect(show_data, SIGNAL(clicked()), this, SLOT(FillOps()));
+
+    QHBoxLayout* btns_layout_ = new QHBoxLayout;
+
+    QPushButton* del_btn = new QPushButton("Удалить");
+    del_btn->setFixedWidth(120);
+    btns_layout_->addWidget(del_btn);
+
+    QPushButton* edit_btn = new QPushButton("Редактировать");
+    edit_btn->setFixedWidth(120);
+    btns_layout_->addWidget(edit_btn);
+
+    layout_->addLayout(btns_layout_);
+
+    connect(del_btn, SIGNAL(clicked()), SLOT(Delete()));
+    connect(edit_btn, SIGNAL(clicked()), SLOT(Edit()));
 
     FillData();
 }
@@ -95,7 +111,7 @@ void TransactionEditor::FillTargets() {
 
 void TransactionEditor::FillOps() {
     list_->clear();
-    trns_ptrs_.clear();
+    trns_idxs_.clear();
 
     QDate from = date_from_->date();
     QDate to = date_to_->date();
@@ -130,17 +146,38 @@ void TransactionEditor::FillOps() {
 
     for (auto& op : ops) {
         op->Visit(tr);
-        list_->addItem(tr.GetResult());
-        trns_ptrs_.push_back(op);
+        list_->addItem(tr.GetResult() /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
+        trns_idxs_.push_back(op->Index());
     }
 }
 
-void TransactionEditor::Edit(QListWidgetItem*) {
-    size_t idx = list_->currentRow();
-    TransactBase* op = trns_ptrs_.at(idx);
+void TransactionEditor::Edit() {
+    int idx = list_->currentRow();
 
+    if (idx == -1) {
+        return;
+    }
 
-    qDebug() << op->Sum().String();
+    TransactBase* op = wallet_.FindTransact(trns_idxs_.at(idx));
+
+    ModalEditor* me = new ModalEditor(op, wallet_);
+
+    connect(me, SIGNAL(Updated()), SLOT(FillOps()));
+
+    me->show();
+}
+
+void TransactionEditor::Delete() {
+    int idx = list_->currentRow();
+
+    if (idx == -1) {
+        return;
+    }
+
+    size_t trns = trns_idxs_.at(idx);
+
+    wallet_.DeleteTransaction(trns);
+    FillOps();
 }
 
 const QVector<CategoryInfo> TransactionEditor::GetCats() const {

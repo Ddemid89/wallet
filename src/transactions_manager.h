@@ -77,6 +77,9 @@ public:
     void AddTransaction(TransactionAdder& trs);
     void AddTransfer(TransferAdder& trs);
 
+    void AddTransaction(TransactionAdder& trs, size_t idx);
+    void AddTransfer(TransferAdder& trs, size_t idx);
+
     QVector<TransactBase*> GetTransacts(TransactType type = TransactType::All,
                                         size_t number = 10, bool late_to_early = true);
 
@@ -92,6 +95,9 @@ public:
             loader_.Save(date, std::move(part));
         }
     }
+
+    TransactBase* FindTransact(size_t idx);
+    void DeleteTransact(size_t idx);
 
 private:
     void Load(QDate date) {
@@ -114,14 +120,18 @@ private:
             model_representation::TransType type
                     = static_cast<model_representation::TransType>(trs.type);
 
+            std::unique_ptr<TransactBase> ptr;
+
             if (type == model_representation::TransType::Transfer) {
-                transacts_.emplace(std::make_unique<Transfer>(trs));
-            } else if (type == model_representation::TransType::Income) {
-                transacts_.emplace(std::make_unique<Transaction>(trs, true));
+                ptr.reset(new Transfer(trs));
             } else {
-                transacts_.emplace(std::make_unique<Transaction>(trs, false));
+                ptr.reset(new Transaction(trs, type == model_representation::TransType::Income));
             }
+
+            trns_idx_[trs.id] = ptr.get();
+            transacts_.emplace(std::move(ptr));
         }
+        transact_id_ = part.id;
     }
 
     std::map<Date, QVector<model_representation::TransactionRepresentation>>
@@ -141,25 +151,35 @@ private:
         TypeChecker tc(type);
         QVector<TransactBase*> result;
 
-        auto op = [&tc](const std::unique_ptr<TransactBase>& tr) {
-            tr->Visit(tc);
-            return tc.Result();
-        };
+        if (type != TransactType::All) {
+            auto op = [&tc](const std::unique_ptr<TransactBase>& tr) {
+                tr->Visit(tc);
+                return tc.Result();
+            };
 
-        while(number-- && begin != end) {
-            if (op(*begin)) {
-                result.push_back(begin->get());
+            while(number-- && begin != end) {
+                if (op(*begin)) {
+                    result.push_back(begin->get());
+                }
+                ++begin;
             }
-            ++begin;
-        }
 
-        return result;
+            return result;
+        } else {
+            while(number-- && begin != end) {
+                result.push_back(begin->get());
+                ++begin;
+            }
+
+            return result;
+        }
     }
 
     LoaderInterface& loader_;
 
     std::set<Date> loaded_;
 
+    std::unordered_map<size_t, TransactBase*> trns_idx_;
     std::set<std::unique_ptr<TransactBase>, TransactionComp> transacts_;
 
     size_t GetNewId() {

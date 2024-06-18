@@ -24,10 +24,14 @@ signals:
 public slots:
     void select();
     void submit();
+    void DeleteRestore();
+    void Edit();
+    void SelectAccount();
+    void FillAccs();
 private:
     void FillData();
 
-    void FillAccs();
+
 
     void showEvent(QShowEvent *event) override;
 
@@ -42,6 +46,10 @@ private:
     QLineEdit* name_ = new QLineEdit;
     QComboBox* type_ = new QComboBox;
     QDoubleSpinBox* start_sum_ = new QDoubleSpinBox;
+
+    QPushButton* del_  = new QPushButton("Удалить");
+
+    QVector<size_t> accs_index_;
 };
 
 #endif // ADDACCOUNTWINDOW_H

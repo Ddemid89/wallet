@@ -15,7 +15,8 @@ QT       += core gui widgets
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 # Input
-HEADERS += src/account_edit.h \
+HEADERS += \
+           src/account_editor.h \
            src/account_widget.h \
            src/add_account_window.h \
            src/add_category_window.h \
@@ -32,7 +33,8 @@ HEADERS += src/account_edit.h \
            src/serialization.h \
            src/transaction_editor.h \
            src/transactions_manager.h
-SOURCES += src/account_edit.cpp \
+SOURCES += \
+           src/account_editor.cpp \
            src/account_widget.cpp \
            src/add_account_window.cpp \
            src/add_category_window.cpp \

@@ -42,9 +42,12 @@ public:
     Wallet(transactions_manager::LoaderInterface&);
 
     const std::vector<std::unique_ptr<AccountBase>>& GetAccounts() const;
+    AccountBase* GetOneAccount(size_t id) const;
     QStringList GetAccountsNames() const;
     QString GetAccName(size_t idx) const;
     void AddAccount(AccAdder);
+    size_t AccounsExist() const;
+    void ChangeAccountType(AccAdder acc, size_t acc_id);
 
     QVector<CategoryInfo> GetCategories(bool arrive_) const;
     QVector<CategoryInfo> GetAllCategories() const;
@@ -54,6 +57,8 @@ public:
 
     void AddTransaction(transactions_manager::TransactionAdder transact); //OK
     void AddTransfer(transactions_manager::TransferAdder transfer); //OK
+    void AddTransaction(transactions_manager::TransactionAdder transact, size_t idx); //OK
+    void AddTransfer(transactions_manager::TransferAdder transfer, size_t idx); //OK
 
     QVector<TransactBase*> GetTransacts(TransactType type = TransactType::All,
                                         size_t number = 10, bool late_to_early = true) const;
@@ -67,7 +72,7 @@ public:
     (QDate from, QDate to, TransactType type, size_t acc_id, size_t cat_id) const;
 
     void SaveTransacts() {
-        transacts_DELETE_THIS.Save();
+        transacts_.Save();
     }
 
     model_representation::AccountsData GetAccountsRepresentation() const;
@@ -76,7 +81,13 @@ public:
     void RestoreAccounts(model_representation::AccountsData&& accs);
     void RestoreCategories(model_representation::CategoriesData&& cats);
 
+    bool IsAccountDeleted(size_t acc_id);
     void SetAccountDeleted(size_t acc_id, bool deleted);
+
+    void DeleteTransaction(size_t idx);
+    TransactBase* FindTransact(size_t idx);
+    void EditTransact(size_t idx, transactions_manager::TransactionAdder& adder);
+    void EditTransact(size_t idx, transactions_manager::TransferAdder& adder);
 
 private:
     using trans_ptr = std::unique_ptr<TransactBase>;
@@ -107,7 +118,7 @@ private:
     std::deque<Category> categories_; // <-- 4
     std::unordered_map<size_t, Category*> cats_index_;
 
-    mutable transactions_manager::TransactionsManager transacts_DELETE_THIS;
+    mutable transactions_manager::TransactionsManager transacts_;
 };
 
 namespace detail {

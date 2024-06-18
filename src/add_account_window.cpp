@@ -4,6 +4,7 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QCheckBox>
+#include "account_editor.h"
 
 AddAccountWindow::AddAccountWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                         : Widgets(wallet, m_window, parent){
@@ -12,6 +13,7 @@ AddAccountWindow::AddAccountWindow(Wallet& wallet, MainWindow& m_window, QWidget
     QLabel* lab2 = new QLabel("Новый счет:");
     QFormLayout* additional = new QFormLayout;
     QPushButton* button = new QPushButton("Создать счет");
+    QHBoxLayout* del_edit = new QHBoxLayout;
 
     lab2->setFrameStyle(2);
 
@@ -38,12 +40,25 @@ AddAccountWindow::AddAccountWindow(Wallet& wallet, MainWindow& m_window, QWidget
     date_->setMinimum(1);
     date_->setMaximum(31);
 
+    QPushButton* edit = new QPushButton("Редактировать");
+
+    del_edit->addSpacing(100);
+    del_edit->addWidget(edit);
+    del_edit->addSpacing(200);
+    del_edit->addWidget(del_);
+    del_edit->addSpacing(100);
+
     connect(type_, &QComboBox::currentIndexChanged, this, &AddAccountWindow::select);
     connect(button, SIGNAL(clicked()), this, SLOT(submit()));
+    connect(accs_, &QListWidget::currentItemChanged, this, &AddAccountWindow::SelectAccount);
+    connect(del_, SIGNAL(clicked()), SLOT(DeleteRestore()));
+    connect(edit, SIGNAL(clicked()), SLOT(Edit()));
+    connect(accs_, &QListWidget::itemDoubleClicked, this, &AddAccountWindow::Edit);
 
     layout_->addWidget(back_);
     layout_->addWidget(lab);
     layout_->addWidget(accs_);
+    layout_->addLayout(del_edit);
     layout_->addWidget(lab2);
 
     layout->addRow(new QLabel("Название счета: "), name_);
@@ -63,7 +78,6 @@ AddAccountWindow::AddAccountWindow(Wallet& wallet, MainWindow& m_window, QWidget
 
     FillData();
 
-    //setLayout(layout_);
 }
 
 void AddAccountWindow::select() {
@@ -118,6 +132,51 @@ void AddAccountWindow::submit() {
     name_->clear();
 }
 
+void AddAccountWindow::DeleteRestore() {
+    int row = accs_->currentRow();
+    if (row == -1) {
+        return;
+    }
+    size_t acc_id = accs_index_.at(row);
+
+    bool deleted = wallet_.IsAccountDeleted(acc_id);
+    wallet_.SetAccountDeleted(acc_id, !deleted);
+    FillAccs();
+}
+
+void AddAccountWindow::Edit() {
+    int row = accs_->currentRow();
+    if (row == -1) {
+        return;
+    }
+    size_t acc_id = accs_index_.at(row);
+
+    AccountBase* acc = wallet_.GetOneAccount(acc_id);
+    AccountEditor* ae = new AccountEditor(wallet_, acc_id);
+
+    acc->Visit(*ae);
+
+    connect(ae, &AccountEditor::Changed, this, &AddAccountWindow::FillAccs);
+
+    ae->show();
+}
+
+void AddAccountWindow::SelectAccount() {
+    int row = accs_->currentRow();
+    if (row == -1) {
+        return;
+    }
+    size_t acc_id = accs_index_.at(row);
+
+    if (wallet_.IsAccountDeleted(acc_id)) {
+        del_->setText("Восстановить");
+    } else {
+        del_->setText("Удалить");
+    }
+}
+
+
+
 void AddAccountWindow::FillData() {
     consider_->setChecked(true);
     FillAccs();
@@ -142,16 +201,19 @@ void AddAccountWindow::FillAccs() {
     QVector<AccountBase*> deleted;
 
     accs_->clear();
+    accs_index_.clear();
 
     for (auto& acc : accs) {
         if (!acc->IsDeleted()) {
-            accs_->addItem(acc->GetName());
+            accs_index_.push_back(acc->GetIndex());
+            accs_->addItem(acc->GetName() + " (" + acc->GetSum().String() + " руб.)");
         } else {
             deleted.push_back(acc.get());
         }
     }
 
     for (auto acc : deleted) {
+        accs_index_.push_back(acc->GetIndex());
         accs_->addItem(acc->GetName() + " (удален)");
     }
 }

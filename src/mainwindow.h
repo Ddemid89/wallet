@@ -16,7 +16,6 @@ enum class WidgetType {
     AddExpens,
     AddTransfer,
     EditTransacts,
-    EditAccounts,
     CellIncDec
 };
 
