@@ -74,6 +74,7 @@ CellWindow::CellWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent) : 
 
     connect(add_row, SIGNAL(clicked()), SLOT(AddRow()));
     connect(del_row, SIGNAL(clicked()), SLOT(PopRow()));
+    connect(scroll_, &QScrollBar::valueChanged, this, &CellWindow::FillRecent);
 
     button_layout->setContentsMargins(600, 10, 20, 0);
     button_layout->addWidget(del_row);
@@ -122,8 +123,13 @@ void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
     for (const auto& cat : wallet_.GetAllCategories()) {
         cat_id_to_name_[cat.idx] = cat.name;
     }
-    recent_ops_ = wallet_.GetTransacts(TransactType::All, 50, true);
+    recent_ops_ = wallet_.GetTransacts(TransactShowType::All, 50, true);
+
+    scroll_->setMinimum(0);
+    scroll_->setMaximum(qMax(0, static_cast<int>(recent_ops_.size() - RECENT_LINES)));
+
     FillRecent();
+    scroll_->setValue(0);
 }
 
 void CellWindow::AddRow() {
@@ -163,26 +169,23 @@ void CellWindow::FillRecent() {
 }
 
 void CellWindow::AddTransaction(CellTransaction&& ct) {
-    if (ct.type == OpType::Transfer) {
-        transactions_manager::TransferAdder adder;
-        adder.date     = ct.date;
-        adder.from_idx = ct.from;
-        adder.to_idx   = ct.to;
-        adder.sum      = ct.sum;
-        Q_ASSERT(adder.IsValid());
-        wallet_.AddTransfer(adder);
+    transactions_manager::TransactionAdder adder;
+    if (ct.type == OpType::Inc) {
+        adder.type = TransactionType::Income;
+    } else if (ct.type == OpType::Dec) {
+        adder.type = TransactionType::Expense;
     } else {
-        transactions_manager::TransactionAdder adder;
-        adder.date     = ct.date;
-        adder.acc_idx = ct.from;
-        adder.cat_idx  = ct.to;
-        adder.sum      = ct.sum;
-        adder.inc      = ct.type == OpType::Inc;
-        wallet_.AddTransaction(adder);
+        adder.type = TransactionType::Transfer;
     }
+    adder.date     = ct.date;
+    adder.from_idx = ct.from;
+    adder.to_idx   = ct.to;
+    adder.sum      = ct.sum;
+    Q_ASSERT(adder.IsValid());
+    wallet_.AddTransaction(adder);
 }
 
-void CellWindow::FillRecentLine(size_t line_idx, TransactBase *trns) {
+void CellWindow::FillRecentLine(size_t line_idx, const Transaction_DEL *trns) {
     Q_ASSERT(line_idx < RECENT_LINES);
 
     LabelRow& line = *recent_ops_lines_[line_idx];
@@ -365,6 +368,12 @@ LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     from_ = GetLabel("-", 150, false, 1);
     to_   = GetLabel("-", 0,   false, 1);
 
+    date_->setAlignment(Qt::AlignLeft);
+    op_->setAlignment(Qt::AlignLeft);
+    sum_->setAlignment(Qt::AlignLeft);
+    from_->setAlignment(Qt::AlignLeft);
+    to_->setAlignment(Qt::AlignLeft);
+
     layout_->setContentsMargins(0, 0, 0, 0);
     layout_->setSpacing(0);
 
@@ -379,8 +388,16 @@ LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     setLayout(layout_);
 }
 
-void LabelRow::SetTransaction(TransactBase *trns, const NamesIndex& acc_names, const NamesIndex& cat_names) {
+void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc_names, const NamesIndex& cat_names) {
     date_->setText(trns->Date().toString("dd.MM.yy"));
     sum_->setText(trns->Sum().StringAbs());
     from_->setText(acc_names.at(trns->AccountFromIdx()));
+
+    if (trns->Type() == TransactionType::Transfer) {
+        to_->setText(acc_names.at(trns->ToIdx()));
+        op_->setText("Перевод");
+    } else {
+        to_->setText(cat_names.at(trns->ToIdx()));
+        op_->setText(trns->Type() == TransactionType::Income ? "Доход" : "Расход");
+    }
 }

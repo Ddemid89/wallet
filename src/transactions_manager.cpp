@@ -16,33 +16,19 @@ void TransactionsManager::AddTransaction(TransactionAdder& trs) {
     AddTransaction(trs, new_id);
 }
 
-void TransactionsManager::AddTransfer(TransferAdder& trs) {
-    size_t new_id = GetNewId();
-
-    AddTransfer(trs, new_id);
-}
-
 void TransactionsManager::AddTransaction(TransactionAdder &trs, size_t idx) {
     Load(trs.date);
 
-    TransactBase* ptr = new Transaction(idx, trs.acc_idx, trs.date,
-                                        trs.sum, trs.cat_idx, trs.inc);
-    trns_idx_[idx] = ptr;
+    Transaction_DEL new_trns{idx, static_cast<size_t>(trs.from_idx),
+                             static_cast<size_t>(trs.to_idx),
+                             trs.type, trs.date, trs.sum};
 
-    transacts_.emplace(ptr);
+    auto pair = transacts_.insert(new_trns);
+    const Transaction_DEL* addr = &(*pair.first);
+    trns_idx_[idx] = addr;
 }
 
-void TransactionsManager::AddTransfer(TransferAdder &trs, size_t idx) {
-    Load(trs.date);
-
-    TransactBase* ptr = new Transfer(idx, trs.from_idx, trs.date,
-                                     trs.sum, trs.to_idx);
-    trns_idx_[idx] = ptr;
-
-    transacts_.emplace(ptr);
-}
-
-QVector<TransactBase*> TransactionsManager::GetTransacts(TransactType type, size_t number, bool late_to_early) {
+QVector<const Transaction_DEL*> TransactionsManager::GetTransacts(TransactShowType type, size_t number, bool late_to_early) {
     if (late_to_early) {
         return GetTransacts(transacts_.cbegin(), transacts_.cend(), number, type);
     } else {
@@ -50,19 +36,20 @@ QVector<TransactBase*> TransactionsManager::GetTransacts(TransactType type, size
     }
 }
 
-QVector<TransactBase*> TransactionsManager::GetTransactFiltred(QDate from, QDate to, TransactType type) {
+QVector<const Transaction_DEL*> TransactionsManager::GetTransactFiltred(QDate from, QDate to, TransactShowType type) {
     Load(from, to);
 
-    QVector<TransactBase*> result;
-    TypeChecker tc(type);
-    std::unique_ptr<TransactBase> l_bound = std::make_unique<Transfer>(0, 0, from, 0, 0);
+    QVector<const Transaction_DEL*> result;
+
+    Transaction_DEL l_bound(0, 0, 0, TransactionType::Income, from, 0);
 
     auto it = transacts_.lower_bound(l_bound);
 
-    while(it != transacts_.end() && (*it)->Date() <= to) {
-        (*it)->Visit(tc);
-        if (tc.Result()) {
-            result.push_back(it->get());
+    TransactionMatcher matcher{type};
+
+    while(it != transacts_.end() && it->Date() <= to) {
+        if (matcher.Check(it->Type())) {
+            result.push_back(&(*it));
         }
         ++it;
     }
@@ -70,20 +57,14 @@ QVector<TransactBase*> TransactionsManager::GetTransactFiltred(QDate from, QDate
     return result;
 }
 
-TransactBase* TransactionsManager::FindTransact(size_t idx) {
-    std::unique_ptr<TransactBase> tmp;
+const Transaction_DEL* TransactionsManager::FindTransact(size_t idx) {
+    std::unique_ptr<Transaction_DEL> tmp;
     return trns_idx_.at(idx);
 }
 
 void TransactionsManager::DeleteTransact(size_t idx) {
-    std::unique_ptr<TransactBase> tmp;
-
     auto trns = trns_idx_.at(idx);
-
-    tmp.reset(trns);
-    auto it = transacts_.find(tmp);
-    tmp.release();
-
+    auto it = transacts_.find(*trns);
     auto idx_it = trns_idx_.find(idx);
 
     if (it != transacts_.end() || idx_it == trns_idx_.end()) {
@@ -92,30 +73,6 @@ void TransactionsManager::DeleteTransact(size_t idx) {
     } else {
         throw std::runtime_error("Something wrong in TransactionManager::DeleteTransact");
     }
-}
-
-
-bool TransactionComp::operator()(const std::unique_ptr<TransactBase>& a, const std::unique_ptr<TransactBase>& b) const {
-    return a->Date() < b->Date()
-            || (a->Date() == b->Date() && a->Index() < b->Index());
-}
-
-void TypeChecker::Visit(TransactBase& trs) {
-    trs.Visit(*this);
-}
-
-void TypeChecker::Visit(Transaction& trs) {
-    bool inc = trs.IsIncome() && type_ == TransactType::Income;
-    bool exp = !trs.IsIncome() && type_ == TransactType::Expense;
-    res_ = inc || exp || type_ == TransactType::IncExp || type_ == TransactType::All;
-}
-
-void TypeChecker::Visit(Transfer&) {
-    res_ = type_ == TransactType::Transfer || type_ == TransactType::All;
-}
-
-bool TypeChecker::Result() {
-    return res_;
 }
 
 bool Date::operator<(Date other) const {

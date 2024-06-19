@@ -7,6 +7,33 @@
 #include <QFormLayout>
 #include <QMessageBox>
 
+namespace  {
+QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
+    QString res = trns_ptr->Date().toString("dd.MM.yy")
+                  + ": " + wallet.GetAccName(trns_ptr->AccountFromIdx());
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += " <--(";
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += " ---(";
+    } else {
+        res += " ---[";
+    }
+
+    res += trns_ptr->Sum().StringAbs() + " руб.";
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += ")--- " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += ")--> " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else {
+        res += "]--> " + wallet.GetAccName(trns_ptr->ToIdx());
+    }
+
+    return res;
+}
+}
+
 AddIncDec::AddIncDec(Wallet& wallet, MainWindow& m_window, bool arrive, QWidget* parent)
                                                         : Widgets(wallet, m_window, parent)
                                                         , arrive_(arrive) {
@@ -22,10 +49,10 @@ void AddIncDec::commit() {
 
     transactions_manager::TransactionAdder transact;
     transact.date = date_w->date();
-    transact.acc_idx = accs_idxs_.at(account_w->currentIndex());
-    transact.cat_idx = cats_idxs_.at(target_w->currentIndex());
+    transact.from_idx = accs_idxs_.at(account_w->currentIndex());
+    transact.to_idx = cats_idxs_.at(target_w->currentIndex());
     transact.sum.FromDouble(arrive_ ? sum_w->value() : -sum_w->value());
-    transact.inc = arrive_;
+    transact.type = arrive_ ? TransactionType::Income : TransactionType::Expense;
 
     wallet_.AddTransaction(transact);
     emit(m_window_.show_status("Транзакция добавлена"));
@@ -123,7 +150,7 @@ void AddIncDec::FillTarget() {
     cats_idxs_.clear();
     cats_idxs_.reserve(cats.size());
 
-    for (auto cat : cats) {
+    for (const auto& cat : cats) {
         target_w->addItem(QString(cat.indent * 2, ' ') + cat.name);
         cats_idxs_.push_back(cat.idx);
     }
@@ -134,10 +161,7 @@ void AddIncDec::FillLastOps() {
 
     auto ops = wallet_.GetIncDecTransacts(arrive_, 15, false);
 
-    detail::TransactInfo tr(wallet_);
-
     for (auto op : ops) {
-        tr.Visit(*op);
-        last_ops_->addItem(tr.GetResult());
+        last_ops_->addItem(FormatOperation(wallet_, op));
     }
 }

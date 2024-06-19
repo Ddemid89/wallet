@@ -180,57 +180,72 @@ void Category::SetDec() {
     }
 }
 
-TransactBase::TransactBase(size_t idx, size_t acc, QDate date, Money sum)
-    : idx_(idx)
-    , account_from_idx_(acc)
-    , date_(date)
-    , sum_(sum) {}
+Transaction_DEL::Transaction_DEL(size_t idx, size_t from, size_t to, TransactionType trs_type, QDate date, Money sum)
+    : date_(date)
+    , account_from_idx_(from)
+    , idx_(idx)
+    , sum_(sum)
+    , to_idx_(to)
+    , type_(trs_type)
+{}
 
-TransactBase::TransactBase(model_representation::TransactionRepresentation& trs)
-    : idx_(trs.id)
+Transaction_DEL::Transaction_DEL(model_representation::TransactionRepresentation& trs)
+    : date_(trs.date)
     , account_from_idx_(trs.from_id)
-    , date_(trs.date)
-    , sum_(trs.sum) {}
+    , idx_(trs.id)
+    , sum_(trs.sum)
+    , to_idx_(trs.to_id)
+    , type_(static_cast<TransactionType>(trs.type))
+{}
 
-size_t TransactBase::Index() const {
+
+size_t Transaction_DEL::Index() const {
     return idx_;
 }
 
-size_t TransactBase::AccountFromIdx() const {
+size_t Transaction_DEL::AccountFromIdx() const {
     return account_from_idx_;
 }
 
-QDate TransactBase::Date() const {
+size_t Transaction_DEL::ToIdx() const {
+    return to_idx_;
+}
+
+QDate Transaction_DEL::Date() const {
     return date_;
 }
 
-Money TransactBase::Sum() const {
+Money Transaction_DEL::Sum() const {
     return sum_;
 }
 
-Transaction::Transaction(size_t idx, size_t acc, QDate date, Money sum, size_t cat, bool inc)
-    : TransactBase(idx, acc, date, sum)
-    , category_idx_(cat), inc_(inc) {}
-
-Transaction::Transaction(model_representation::TransactionRepresentation& trs, bool inc)
-    : TransactBase(trs)
-    , category_idx_(trs.to_id)
-    , inc_(inc) {}
-
-size_t Transaction::CategoryIdx() const {
-    return category_idx_;
+TransactionType Transaction_DEL::Type() const {
+    return type_;
 }
 
-bool Transaction::IsIncome() const {
-    return inc_;
+model_representation::TransactionRepresentation Transaction_DEL::GetRepresentation() const {
+    model_representation::TransactionRepresentation res;
+    res.date    = date_;
+    res.from_id = account_from_idx_;
+    res.id      = idx_;
+    res.sum     = sum_.Kopek();
+    res.to_id   = to_idx_;
+    res.type    = static_cast<int>(type_);
+    return res;
 }
 
-Transfer::Transfer(size_t idx, size_t acc, QDate date, Money sum, size_t acc_to)
-    : TransactBase(idx, acc, date, sum)
-    , account_to_idx_(acc_to) {}
+bool Transaction_DEL::operator<(const Transaction_DEL& other) const {
+    return date_ < other.date_
+           || (date_ == other.date_ && idx_ < other.idx_);
+}
 
-size_t Transfer::AccountToIdx() const {
-    return account_to_idx_;
+void Transaction_DEL::Swap(Transaction_DEL& other) {
+    std::swap(date_,             other.date_);
+    std::swap(account_from_idx_, other.account_from_idx_);
+    std::swap(idx_,              other.idx_);
+    std::swap(sum_,              other.sum_);
+    std::swap(to_idx_,           other.to_idx_);
+    std::swap(type_,             other.type_);
 }
 
 Money::Money(long cop) {

@@ -6,6 +6,33 @@
 #include <QLabel>
 #include <QMessageBox>
 
+namespace  {
+QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
+    QString res = trns_ptr->Date().toString("dd.MM.yy")
+                  + ": " + wallet.GetAccName(trns_ptr->AccountFromIdx());
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += " <--(";
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += " ---(";
+    } else {
+        res += " ---[";
+    }
+
+    res += trns_ptr->Sum().StringAbs() + " руб.";
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += ")--- " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += ")--> " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else {
+        res += "]--> " + wallet.GetAccName(trns_ptr->ToIdx());
+    }
+
+    return res;
+}
+}
+
 AddTransferWindow::AddTransferWindow(Wallet& wallet, MainWindow& m_window, QWidget *parent)
                                                          : Widgets(wallet, m_window, parent)  {
     QLabel* lab = new QLabel("Последние переводы:");
@@ -59,7 +86,7 @@ void AddTransferWindow::submit() {
         return;
     }
 
-    transactions_manager::TransferAdder adder;
+    transactions_manager::TransactionAdder adder;
 
     adder.from_idx = accs_idxs_.at(from_->currentIndex());
     adder.to_idx   = accs_idxs_.at(to_->currentIndex());
@@ -67,12 +94,14 @@ void AddTransferWindow::submit() {
     adder.sum.FromDouble(sum_->value());
     adder.date = date_->date();
 
+    adder.type = TransactionType::Transfer;
+
     if (!adder.IsValid()) {
         QMessageBox::warning(0, "Ошибка!", "Счета не могут совпадать!");
         return;
     }
 
-    wallet_.AddTransfer(adder);
+    wallet_.AddTransaction(adder);
     FillLastOps();
 }
 
@@ -104,11 +133,8 @@ void AddTransferWindow::FillLastOps() {
 
     auto ops = wallet_.GetTransfers(15, false);
 
-    detail::TransactInfo tr(wallet_);
-
     for (auto op : ops) {
-        tr.Visit(*op);
-        last_ops_->addItem(tr.GetResult());
+        last_ops_->addItem(FormatOperation(wallet_, op));
     }
 }
 

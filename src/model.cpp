@@ -3,6 +3,29 @@
 #include <QDebug>
 #include <algorithm>
 
+namespace {
+class TransactionFilter{
+public:
+    TransactionFilter(size_t from_id, size_t to_id, std::set<size_t>&& childs) : from_{from_id}, to_{to_id}, childs_(std::move(childs)) {
+
+    }
+    bool operator()(const Transaction_DEL* trns) {
+        return !(CheckAcc(trns) && CheckCat(trns));
+    }
+private:
+    bool CheckAcc(const Transaction_DEL* trns) {
+        return from_ == 0 || from_ == trns->AccountFromIdx();
+    }
+    bool CheckCat(const Transaction_DEL* trns) {
+        return to_ == 0 || to_ == trns->ToIdx() || childs_.count(trns->ToIdx()) > 0;
+    }
+
+    const size_t from_;
+    const size_t to_;
+    const std::set<size_t> childs_;
+};
+}
+
 Wallet::Wallet(transactions_manager::LoaderInterface& loader) : transacts_(loader){
     categories_.emplace_back(0, "Все категории", true, true);
     cats_index_[0] = &categories_.back();
@@ -119,33 +142,22 @@ std::set<size_t> Wallet::GetCategoryChilds(size_t cat_id) const {
 void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
     transacts_.AddTransaction(transact);
 
-    auto& acc = *accs_index_.at(transact.acc_idx);
+    auto& acc = *accs_index_.at(transact.from_idx);
 
-    if ((transact.inc && transact.sum.Kopek() > 0) || (!transact.inc && transact.sum.Kopek() < 0)) {
+    if ((transact.type == TransactionType::Income && transact.sum.Kopek() > 0) || (transact.type == TransactionType::Expense && transact.sum.Kopek() < 0)) {
         acc += transact.sum;
     } else {
         acc -= transact.sum;
     }
-
-}
-
-void Wallet::AddTransfer(transactions_manager::TransferAdder transfer) {
-    transacts_.AddTransfer(transfer);
-
-    auto& from = *accs_index_.at(transfer.from_idx);
-    auto& to = *accs_index_.at(transfer.to_idx);
-
-    from -= transfer.sum;
-    to += transfer.sum;
 
 }
 
 void Wallet::AddTransaction(transactions_manager::TransactionAdder transact, size_t idx) {
     transacts_.AddTransaction(transact, idx);
 
-    auto& acc = *accs_index_.at(transact.acc_idx);
+    auto& acc = *accs_index_.at(transact.from_idx);
 
-    if ((transact.inc && transact.sum.Kopek() > 0) || (!transact.inc && transact.sum.Kopek() < 0)) {
+    if ((transact.type == TransactionType::Income && transact.sum.Kopek() > 0) || (transact.type == TransactionType::Expense && transact.sum.Kopek() < 0)) {
         acc += transact.sum;
     } else {
         acc -= transact.sum;
@@ -153,54 +165,35 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact, siz
 
 }
 
-void Wallet::AddTransfer(transactions_manager::TransferAdder transfer, size_t idx) {
-    transacts_.AddTransfer(transfer, idx);
-
-    auto& from = *accs_index_.at(transfer.from_idx);
-    auto& to = *accs_index_.at(transfer.to_idx);
-
-    from -= transfer.sum;
-    to += transfer.sum;
-
-}
-
-QVector<TransactBase*> Wallet::GetTransacts(TransactType type, size_t number, bool late_to_early) const {
+QVector<const Transaction_DEL*> Wallet::GetTransacts(TransactShowType type, size_t number, bool late_to_early) const {
     return transacts_.GetTransacts(type, number, late_to_early);
 }
 
-QVector<TransactBase*> Wallet::GetIncomes(size_t number, bool late_to_early) const {
-    return transacts_.GetTransacts(TransactType::Income, number, late_to_early);
+QVector<const Transaction_DEL*> Wallet::GetIncomes(size_t number, bool late_to_early) const {
+    return transacts_.GetTransacts(TransactShowType::Income, number, late_to_early);
 }
 
-QVector<TransactBase*> Wallet::GetExpenses(size_t number, bool late_to_early) const {
-    return transacts_.GetTransacts(TransactType::Expense, number, late_to_early);
+QVector<const Transaction_DEL*> Wallet::GetExpenses(size_t number, bool late_to_early) const {
+    return transacts_.GetTransacts(TransactShowType::Expense, number, late_to_early);
 }
 
-QVector<TransactBase*> Wallet::GetTransfers(size_t number, bool late_to_early) const {
-    return transacts_.GetTransacts(TransactType::Transfer, number, late_to_early);
+QVector<const Transaction_DEL*> Wallet::GetTransfers(size_t number, bool late_to_early) const {
+    return transacts_.GetTransacts(TransactShowType::Transfer, number, late_to_early);
 }
 
-QVector<TransactBase*> Wallet::GetIncDecTransacts(bool arrive, size_t number, bool late_to_early) const {
+QVector<const Transaction_DEL*> Wallet::GetIncDecTransacts(bool arrive, size_t number, bool late_to_early) const {
     if (arrive) {
-        return transacts_.GetTransacts(TransactType::Income, number, late_to_early);
+        return transacts_.GetTransacts(TransactShowType::Income, number, late_to_early);
     } else {
-        return transacts_.GetTransacts(TransactType::Expense, number, late_to_early);
+        return transacts_.GetTransacts(TransactShowType::Expense, number, late_to_early);
     }
 }
 
-QVector<TransactBase*> Wallet::GetTransactFiltred
-(QDate from, QDate to, TransactType type, size_t acc_id, size_t cat_id) const {
+QVector<const Transaction_DEL*> Wallet::GetTransactFiltred
+(QDate from, QDate to, TransactShowType type, size_t acc_id, size_t cat_id) const {
     auto trs = transacts_.GetTransactFiltred(from, to, type);
 
-    bool any_acc = acc_id == 0;
-    bool any_cat = cat_id == 0;
-
-    detail::TransactPredicat tr(any_acc, any_cat, acc_id, cat_id, GetCategoryChilds(cat_id));
-
-    auto op = [&tr](TransactBase* trs) {
-        trs->Visit(tr);
-        return !tr.GetRes();
-    };
+    TransactionFilter op(acc_id, cat_id, GetCategoryChilds(cat_id));
 
     auto it = std::remove_if(trs.begin(), trs.end(), op);
 
@@ -250,37 +243,23 @@ void Wallet::SetAccountDeleted(size_t acc_id, bool deleted) {
 
 void Wallet::DeleteTransaction(size_t idx) {
     auto trns = transacts_.FindTransact(idx);
-    auto trn = dynamic_cast<Transaction*>(trns);
 
-    if (trn) {
-        AccountBase* acc = accs_index_.at(trn->AccountFromIdx());
+    AccountBase* acc = accs_index_.at(trns->AccountFromIdx());
 
-        if (trn->IsIncome()) {
-            *acc -= trn->Sum();
-        } else {
-            *acc += trn->Sum();
-        }
-
+    if (trns->Type() == TransactionType::Income) {
+        *acc -= trns->Sum();
+    } else if (trns->Type() == TransactionType::Expense) {
+        *acc += trns->Sum();
     } else {
-        auto trf = dynamic_cast<Transfer*>(trns);
-
-        if (trf) {
-            AccountBase* from = accs_index_.at(trf->AccountFromIdx());
-            AccountBase* to = accs_index_.at(trf->AccountToIdx());
-
-            *from += trf->Sum();
-            *to   -= trf->Sum();
-
-        } else {
-            throw std::runtime_error("Something wrong in Wallet::DeleteTransaction");
-        }
+        AccountBase* to = accs_index_.at(trns->ToIdx());
+        *acc += trns->Sum();
+        *to  -= trns->Sum();
     }
-
 
     transacts_.DeleteTransact(idx);
 }
 
-TransactBase *Wallet::FindTransact(size_t idx) {
+const Transaction_DEL* Wallet::FindTransact(size_t idx) {
     return transacts_.FindTransact(idx);
 }
 
@@ -289,10 +268,6 @@ void Wallet::EditTransact(size_t idx, transactions_manager::TransactionAdder& ad
     AddTransaction(adder, idx);
 }
 
-void Wallet::EditTransact(size_t idx, transactions_manager::TransferAdder& adder) {
-    DeleteTransaction(idx);
-    AddTransfer(adder, idx);
-}
 
 void Wallet::RestoreOneAccount(model_representation::AccountRepresentation&& acc) {
     AccountType type = static_cast<AccountType>(acc.type);
@@ -423,63 +398,4 @@ std::unique_ptr<AccountBase> MakeAccount(AccAdder acc, size_t idx) {
             acc.overdraft
         );
     }
-}
-
-bool Wallet::trans_comp::operator()(const trans_ptr& a, const trans_ptr& b) const {
-    return (a->Date() < b->Date())
-            || (a->Date() == b->Date() && a->Index() < b->Index());
-}
-
-void detail::TransactInfo::Visit(TransactBase& tr) {
-    tr.Visit(*this);
-}
-
-void detail::TransactInfo::Visit(Transaction& tr) {
-    res_ = tr.Date().toString("dd.MM.yyyy") + ": "
-            + wallet_.GetAccName(tr.AccountFromIdx())
-            + (tr.IsIncome() ? " <--(" : " ---(")
-            + tr.Sum().StringAbs() + " руб."
-            + (tr.IsIncome() ? ")--- " : ")--> ")
-            + wallet_.GetCatName(tr.CategoryIdx());
-}
-
-void detail::TransactInfo::Visit(Transfer& tr) {
-    res_ = tr.Date().toString("dd.MM.yyyy") + ": "
-            + wallet_.GetAccName(tr.AccountFromIdx())
-            + " ---["
-            + tr.Sum().String() + " руб."
-            + "]--> "
-            + wallet_.GetAccName(tr.AccountToIdx());
-}
-
-QString detail::TransactInfo::GetResult() const {
-    return res_;
-}
-
-detail::TransactPredicat::TransactPredicat(bool any_acc, bool any_cat, size_t acc, size_t cat, std::set<size_t>&& cat_childs)
-    : any_acc_(any_acc), any_cat_(any_cat), acc_(acc), cat_(cat), cat_childs_(std::move(cat_childs)) {}
-
-void detail::TransactPredicat::Visit(TransactBase& tr) {
-    tr.Visit(*this);
-}
-
-void detail::TransactPredicat::Visit(Transaction& tr) {
-    if ((any_acc_ || tr.AccountFromIdx() == acc_)
-            && (any_cat_ || tr.CategoryIdx() == cat_ || cat_childs_.count(tr.CategoryIdx()) != 0)) {
-        res_ = true;
-    } else {
-        res_ = false;
-    }
-}
-
-void detail::TransactPredicat::Visit(Transfer& tr) {
-    if (any_cat_ && (any_acc_ || tr.AccountToIdx() == acc_ || tr.AccountFromIdx() == acc_)) {
-        res_ = true;
-    } else {
-        res_ = false;
-    }
-}
-
-bool detail::TransactPredicat::GetRes() const {
-    return res_;
 }

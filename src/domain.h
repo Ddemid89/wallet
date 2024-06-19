@@ -6,12 +6,18 @@
 
 #include "model_representation.h"
 
-enum class TransactType {
+enum class TransactShowType {
     Income,
     Expense,
     Transfer,
     All,
     IncExp
+};
+
+enum class TransactionType{
+    Income,
+    Expense,
+    Transfer
 };
 
 enum class AccountType {
@@ -334,100 +340,27 @@ private:
     bool deleted_ = false;
 };
 
-class TransactBase;
-class Transaction;
-class Transfer;
-
-class TransferVisitorInterface {
+class Transaction_DEL{
 public:
-    virtual ~TransferVisitorInterface() = default;
-    virtual void Visit(Transaction&) = 0;
-    virtual void Visit(Transfer&) = 0;
-    virtual void Visit(TransactBase&) = 0;
-};
-
-class TransactBase{
-public:
-    TransactBase(size_t idx, size_t acc, QDate date, Money sum);
-    TransactBase(model_representation::TransactionRepresentation& trs);
+    Transaction_DEL(size_t idx, size_t from, size_t to, TransactionType type, QDate date, Money sum);
+    Transaction_DEL(model_representation::TransactionRepresentation& trs);
     size_t Index() const;
     size_t AccountFromIdx() const;
+    size_t ToIdx() const;
     QDate Date() const;
     Money Sum() const;
-    virtual void Visit(TransferVisitorInterface& visitor) = 0;
-    virtual model_representation::TransactionRepresentation GetRepresentation() const = 0;
-    virtual ~TransactBase() = default;
+    TransactionType Type() const;
+    bool Income();
+    model_representation::TransactionRepresentation GetRepresentation() const;
+    bool operator<(const Transaction_DEL& other) const;
+    void Swap(Transaction_DEL& other);
 protected:
-    size_t idx_;
-    size_t account_from_idx_;
     QDate date_;
+    size_t account_from_idx_;
+    size_t idx_;
     Money sum_;
-};
-
-class Transaction : public TransactBase {
-public:
-    Transaction(size_t idx, size_t acc, QDate date, Money sum, size_t cat, bool inc);
-    Transaction(model_representation::TransactionRepresentation& trs, bool inc);
-    size_t CategoryIdx() const;
-    bool IsIncome() const;
-    void Visit(TransferVisitorInterface& visitor) override {
-        visitor.Visit(*this);
-    }
-    model_representation::TransactionRepresentation GetRepresentation() const override {
-        model_representation::TransactionRepresentation res;
-
-        res.from_id = account_from_idx_;
-        res.date = date_;
-        res.sum = sum_.Kopek();
-        res.to_id = category_idx_;
-        res.id = idx_;
-
-        model_representation::TransType type;
-
-        if (inc_) {
-            type = model_representation::TransType::Income;
-        } else {
-            type = model_representation::TransType::Expense;
-        }
-
-        res.type = static_cast<int>(type);
-
-        return res;
-    }
-private:
-    size_t category_idx_;
-    bool inc_;
-};
-
-class Transfer : public TransactBase {
-public:
-    Transfer(size_t idx, size_t acc, QDate date, Money sum, size_t acc_to);
-    Transfer(model_representation::TransactionRepresentation& trs)
-        : TransactBase(trs)
-        , account_to_idx_(trs.to_id) {}
-    size_t AccountToIdx() const;
-    void Visit(TransferVisitorInterface& visitor) override {
-        visitor.Visit(*this);
-    }
-    model_representation::TransactionRepresentation GetRepresentation() const override {
-        model_representation::TransactionRepresentation res;
-
-        res.from_id = account_from_idx_;
-        res.date = date_;
-        res.sum = sum_.Kopek();
-        res.to_id = account_to_idx_;
-        res.id = idx_;
-
-        model_representation::TransType type;
-
-        type = model_representation::TransType::Transfer;
-
-        res.type = static_cast<int>(type);
-
-        return res;
-    }
-private:
-    size_t account_to_idx_;
+    size_t to_idx_;
+    TransactionType type_;
 };
 
 #endif // DOMAIN_H

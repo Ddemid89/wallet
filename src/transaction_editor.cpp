@@ -5,6 +5,33 @@
 #include <QPushButton>
 #include <QListWidget>
 
+namespace  {
+QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
+    QString res = trns_ptr->Date().toString("dd.MM.yy")
+                  + ": " + wallet.GetAccName(trns_ptr->AccountFromIdx());
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += " <--(";
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += " ---(";
+    } else {
+        res += " ---[";
+    }
+
+    res += trns_ptr->Sum().StringAbs() + " руб.";
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += ")--- " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += ")--> " + wallet.GetCatName(trns_ptr->ToIdx());
+    } else {
+        res += "]--> " + wallet.GetAccName(trns_ptr->ToIdx());
+    }
+
+    return res;
+}
+}
+
 TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                             : Widgets(wallet, m_window, parent) {
     QHBoxLayout* date_select_ = new QHBoxLayout;
@@ -116,37 +143,34 @@ void TransactionEditor::FillOps() {
     QDate from = date_from_->date();
     QDate to = date_to_->date();
 
-    TransactType type = TransactType::All;
+    TransactShowType type = TransactShowType::All;
 
     switch (type_->currentIndex()) {
     case 0:
-        type = TransactType::All;
+        type = TransactShowType::All;
         break;
     case 1:
-        type = TransactType::Income;
+        type = TransactShowType::Income;
         break;
     case 2:
-        type = TransactType::Expense;
+        type = TransactShowType::Expense;
         break;
     case 3:
-        type = TransactType::Transfer;
+        type = TransactShowType::Transfer;
         break;
     }
 
     size_t acc = accs_idxs_.at(acc_->currentIndex());
     size_t cat = 0;
 
-    if (type != TransactType::Transfer) {
+    if (type != TransactShowType::Transfer) {
         cat = cats_idxs_.at(target_->currentIndex());
     }
 
     auto ops = wallet_.GetTransactFiltred(from, to, type, acc, cat);
 
-    detail::TransactInfo tr(wallet_);
-
     for (auto& op : ops) {
-        op->Visit(tr);
-        list_->addItem(tr.GetResult() /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
+        list_->addItem(FormatOperation(wallet_, op) /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
         trns_idxs_.push_back(op->Index());
     }
 }
@@ -158,7 +182,7 @@ void TransactionEditor::Edit() {
         return;
     }
 
-    TransactBase* op = wallet_.FindTransact(trns_idxs_.at(idx));
+    const Transaction_DEL* op = wallet_.FindTransact(trns_idxs_.at(idx));
 
     ModalEditor* me = new ModalEditor(op, wallet_);
 

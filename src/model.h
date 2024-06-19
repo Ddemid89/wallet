@@ -56,20 +56,18 @@ public:
     std::set<size_t> GetCategoryChilds(size_t cat_id) const;
 
     void AddTransaction(transactions_manager::TransactionAdder transact); //OK
-    void AddTransfer(transactions_manager::TransferAdder transfer); //OK
     void AddTransaction(transactions_manager::TransactionAdder transact, size_t idx); //OK
-    void AddTransfer(transactions_manager::TransferAdder transfer, size_t idx); //OK
 
-    QVector<TransactBase*> GetTransacts(TransactType type = TransactType::All,
+    QVector<const Transaction_DEL*> GetTransacts(TransactShowType type = TransactShowType::All,
                                         size_t number = 10, bool late_to_early = true) const;
 
-    QVector<TransactBase*> GetIncomes(size_t number = 10, bool late_to_early = true) const;
-    QVector<TransactBase*> GetExpenses(size_t number = 10, bool late_to_early = true) const;
-    QVector<TransactBase*> GetTransfers(size_t number = 10, bool late_to_early = true) const;
-    QVector<TransactBase*> GetIncDecTransacts(bool arrive, size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction_DEL*> GetIncomes(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction_DEL*> GetExpenses(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction_DEL*> GetTransfers(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction_DEL*> GetIncDecTransacts(bool arrive, size_t number = 10, bool late_to_early = true) const;
 
-    QVector<TransactBase*> GetTransactFiltred
-    (QDate from, QDate to, TransactType type, size_t acc_id, size_t cat_id) const;
+    QVector<const Transaction_DEL*> GetTransactFiltred
+    (QDate from, QDate to, TransactShowType type, size_t acc_id, size_t cat_id) const;
 
     void SaveTransacts() {
         transacts_.Save();
@@ -85,19 +83,17 @@ public:
     void SetAccountDeleted(size_t acc_id, bool deleted);
 
     void DeleteTransaction(size_t idx);
-    TransactBase* FindTransact(size_t idx);
+    const Transaction_DEL* FindTransact(size_t idx);
     void EditTransact(size_t idx, transactions_manager::TransactionAdder& adder);
-    void EditTransact(size_t idx, transactions_manager::TransferAdder& adder);
 
 private:
-    using trans_ptr = std::unique_ptr<TransactBase>;
 
-    class trans_comp{
-    public:
-        bool operator()(const trans_ptr& a, const trans_ptr& b) const;
-    };
+    // class trans_comp{
+    // public:
+    //     bool operator()(const trans_ptr& a, const trans_ptr& b) const;
+    // };
 
-    using TransactIndex = std::set<trans_ptr, trans_comp>;
+    //using TransactIndex = std::set<trans_ptr, trans_comp>;
 
     void RestoreOneAccount(model_representation::AccountRepresentation&& acc);
     void RestoreOneCategory(model_representation::CategoryRepresentation&& cat);
@@ -121,35 +117,4 @@ private:
     mutable transactions_manager::TransactionsManager transacts_;
 };
 
-namespace detail {
-class TransactInfo : public TransferVisitorInterface {
-public:
-    TransactInfo(Wallet& wallet) : wallet_(wallet) {}
-    void Visit(TransactBase& tr) override;
-    void Visit(Transaction& tr) override;
-    void Visit(Transfer& tr) override;
-    QString GetResult() const;
-private:
-    QString res_;
-    Wallet& wallet_;
-};
-
-class TransactPredicat : public TransferVisitorInterface {
-public:
-    TransactPredicat(bool any_acc, bool any_cat, size_t acc, size_t cat, std::set<size_t>&& cat_childs);
-
-    void Visit(TransactBase& tr) override;
-    void Visit(Transaction& tr) override;
-    void Visit(Transfer& tr) override;
-    bool GetRes() const;
-private:
-    bool any_acc_;
-    bool any_cat_;
-    size_t acc_;
-    size_t cat_;
-    bool res_;
-    std::set<size_t> cat_childs_;
-};
-
-} // namespace detail
 #endif // MODEL_H

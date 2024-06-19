@@ -16,7 +16,7 @@
 class ModalEditor : public QWidget {
     Q_OBJECT
 public:
-    ModalEditor(TransactBase* trns, Wallet& wallet, QWidget* parent = nullptr) : QWidget{parent}, trns_{trns}, wallet_{wallet} {
+    ModalEditor(const Transaction_DEL* trns, Wallet& wallet, QWidget* parent = nullptr) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
         QFormLayout* layout_ = new QFormLayout;
 
         layout_->addRow("Дата:",  date_);
@@ -33,49 +33,24 @@ public:
         date_->setDate(trns->Date());
         date_->setMaximumDate(QDate::currentDate());
 
-        auto transact = dynamic_cast<Transaction*>(trns);
-
-        if (transact) {
+        if (type_ == TransactionType::Transfer) {
+            acc_lab_->setText("Откуда:");
+            cat_lab_->setText("Куда:");
+            setWindowTitle("Редактировать перевод");
+            FillAccs(acc_, trns_->AccountFromIdx());
+            FillAccs(cat_, trns_->ToIdx());
+            if (acc_->count() < 2 || cat_->count() < 2) {
+                acc_->setEnabled(false);
+                cat_lab_->setEnabled(false);
+            }
+            connect(acc_, &QComboBox::currentIndexChanged, this, &ModalEditor::AccChanged);
+            connect(cat_, &QComboBox::currentIndexChanged, this, &ModalEditor::CatChanged);
+        } else {
             acc_lab_->setText("Счет:");
             cat_lab_->setText("Категория:");
-
-            FillAccs(acc_, transact->AccountFromIdx());
-            FillCats(transact->IsIncome(), transact->CategoryIdx());
-
-            if (transact->IsIncome()) {
-                setWindowTitle("Редактировать доход");
-            } else {
-                setWindowTitle("Редактировать расход");
-            }
-
-            is_transaction_ = true;
-            inc_ = transact->IsIncome();
-            to_ = transact->CategoryIdx();
-
-        } else {
-            auto transfer = dynamic_cast<Transfer*>(trns);
-
-            if (transfer) {
-                acc_lab_->setText("Откуда:");
-                cat_lab_->setText("Куда:");
-                setWindowTitle("Редактировать перевод");
-                FillAccs(acc_, transfer->AccountFromIdx());
-                FillAccs(cat_, transfer->AccountToIdx());
-
-                if (acc_->count() < 2 || cat_->count() < 2) {
-                    acc_->setEnabled(false);
-                    cat_lab_->setEnabled(false);
-                }
-
-                connect(acc_, &QComboBox::currentIndexChanged, this, &ModalEditor::AccChanged);
-                connect(cat_, &QComboBox::currentIndexChanged, this, &ModalEditor::CatChanged);
-
-                is_transaction_ = false;
-                to_ = transfer->AccountToIdx();
-
-            } else {
-                throw std::runtime_error("Something wrong in ModalEditor::ModalEditor");
-            }
+            FillAccs(acc_, trns_->AccountFromIdx());
+            FillCats(type_ == TransactionType::Income, trns_->ToIdx());
+            setWindowTitle(type_ == TransactionType::Income ? "Редактировать доход" : "Редактировать расход");
         }
 
         QPushButton* done_ = new QPushButton("Готово");
@@ -143,29 +118,14 @@ private slots:
     }
 
     void Submit() {
-        size_t from = acc_idx_.at(acc_->currentIndex());
-        size_t to   = cat_idx_.at(cat_->currentIndex());
-        QDate  date = date_->date();
-        Money sum  = sum_->value();
+        transactions_manager::TransactionAdder adder;
+        adder.from_idx = acc_idx_.at(acc_->currentIndex());
+        adder.to_idx   = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
+        adder.date     = date_->date();
+        adder.sum      = sum_->value();
+        adder.type     = type_;
 
-        if (is_transaction_) {
-            transactions_manager::TransactionAdder adder;
-            adder.acc_idx = from;
-            adder.cat_idx = to;
-            adder.date    = date;
-            adder.sum     = sum;
-            adder.inc     = inc_;
-            wallet_.EditTransact(trns_->Index(), adder);
-        } else {
-            transactions_manager::TransferAdder adder;
-            adder.from_idx = from;
-            adder.to_idx   = to;
-            adder.date     = date;
-            adder.sum      = sum;
-            wallet_.EditTransact(trns_->Index(), adder);
-        }
-
-
+        wallet_.EditTransact(trns_->Index(), adder);
     }
 signals:
     void Updated();
@@ -179,7 +139,7 @@ private:
         size_t old_from = trns_->AccountFromIdx();
         QDate  old_date = trns_->Date();
         Money old_sum   = trns_->Sum();
-        size_t old_to   = to_;
+        size_t old_to   = trns_->ToIdx();
 
         return new_from == old_from && new_date == old_date && new_sum == old_sum && new_to == old_to;
     }
@@ -220,12 +180,10 @@ private:
         }
     }
 
-    TransactBase* trns_;
+    const Transaction_DEL* const trns_;
     Wallet& wallet_;
 
-    bool is_transaction_;
-    bool inc_ = false;
-    size_t to_;
+    const TransactionType type_;
 
     QVector<size_t> acc_idx_;
     QVector<size_t> cat_idx_;
