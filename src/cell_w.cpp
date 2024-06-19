@@ -164,7 +164,8 @@ void CellWindow::FillRecent() {
     size_t offset = scroll_->value();
 
     for (int i = 0; i < qMin(RECENT_LINES, recent_ops_.size()); ++i) {
-        FillRecentLine(i, recent_ops_.at(i + offset));
+        QColor color = (i + offset) % 10 != 0 ? Qt::black : QColor(0, 110, 110);
+        FillRecentLine(i, recent_ops_.at(i + offset), color);
     }
 }
 
@@ -185,12 +186,12 @@ void CellWindow::AddTransaction(CellTransaction&& ct) {
     wallet_.AddTransaction(adder);
 }
 
-void CellWindow::FillRecentLine(size_t line_idx, const Transaction_DEL *trns) {
+void CellWindow::FillRecentLine(size_t line_idx, const Transaction_DEL *trns, QColor color) {
     Q_ASSERT(line_idx < RECENT_LINES);
 
     LabelRow& line = *recent_ops_lines_[line_idx];
 
-    line.SetTransaction(trns, acc_id_to_name_, cat_id_to_name_);
+    line.SetTransaction(trns, acc_id_to_name_, cat_id_to_name_, color);
 }
 
 Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget *parent)
@@ -388,7 +389,7 @@ LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     setLayout(layout_);
 }
 
-void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc_names, const NamesIndex& cat_names) {
+void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc_names, const NamesIndex& cat_names, QColor color) {
     date_->setText(trns->Date().toString("dd.MM.yy"));
     sum_->setText(trns->Sum().StringAbs());
     from_->setText(acc_names.at(trns->AccountFromIdx()));
@@ -400,4 +401,13 @@ void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc
         to_->setText(cat_names.at(trns->ToIdx()));
         op_->setText(trns->Type() == TransactionType::Income ? "Доход" : "Расход");
     }
+
+    QPalette pl;
+    pl.setColor(QPalette::WindowText, color);
+
+    date_->setPalette(pl);
+    sum_->setPalette(pl);
+    from_->setPalette(pl);
+    to_->setPalette(pl);
+    op_->setPalette(pl);
 }

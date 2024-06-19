@@ -87,14 +87,6 @@ public:
     void EditTransact(size_t idx, transactions_manager::TransactionAdder& adder);
 
 private:
-
-    // class trans_comp{
-    // public:
-    //     bool operator()(const trans_ptr& a, const trans_ptr& b) const;
-    // };
-
-    //using TransactIndex = std::set<trans_ptr, trans_comp>;
-
     void RestoreOneAccount(model_representation::AccountRepresentation&& acc);
     void RestoreOneCategory(model_representation::CategoryRepresentation&& cat);
     void AddCatAndChilds(size_t index, QVector<CategoryInfo>& result, int indent, bool inc, bool dec) const;

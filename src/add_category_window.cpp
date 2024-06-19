@@ -23,9 +23,12 @@ AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidg
     input_layout->addWidget(new QLabel("Наименование категории: "));
     input_layout->addWidget(name_);
 
+    edit_->setFixedWidth(120);
+
     layout_->addWidget(back_);
     layout_->addWidget(lab);
     layout_->addWidget(list_view);
+    layout_->addWidget(edit_, 0, Qt::AlignCenter);
     layout_->addWidget(lab2);
     layout_->addLayout(input_layout);
     layout_->addWidget(to_inc_);
@@ -33,12 +36,17 @@ AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidg
     layout_->addWidget(submit);
 
     connect(submit, SIGNAL(clicked()), this, SLOT(submit()));
+    connect(edit_, &QPushButton::clicked, this, &AddCategoryWindow::Edit);
+    connect(list_view, &QListWidget::doubleClicked, this, &AddCategoryWindow::Edit);
 
     connect(to_inc_, &QCheckBox::stateChanged, [this](){
         if (to_inc_->isChecked() == false) {
             to_dec_->setChecked(true);
         }
     });
+
+    QFont fnt("Monospace");
+    list_view->setFont(fnt);
 
     connect(to_dec_, &QCheckBox::stateChanged, [this](){
         if (to_dec_->isChecked() == false) {
@@ -74,6 +82,18 @@ void AddCategoryWindow::submit() {
     FillData(parrent_idx);
 }
 
+void AddCategoryWindow::Edit() {
+    int cur_row = list_view->currentRow();
+    if (cur_row == -1) {
+        return;
+    }
+
+    auto cat = cats_->at(cur_row);
+
+    qDebug() << cat.name << "( id:" << cat.idx << ")";
+
+}
+
 void AddCategoryWindow::FillData(int n) {
     name_->clear();
     cats_.reset();
@@ -98,10 +118,14 @@ void AddCategoryWindow::FillCategories(int n) {
             item = "    ";
         }
         for (int i = 0; i < category.indent - 1; ++i) {
-            item += "| ";
+            if (i == category.indent - 2) {
+                item += "|--";
+            } else {
+                item += "|  ";
+            }
         }
         if (category.indent != 0) {
-            item += "+-";
+            item += "+---";
         }
 
         item += category.name;

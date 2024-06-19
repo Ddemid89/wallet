@@ -37,7 +37,7 @@ class LabelRow : public QWidget {
     Q_OBJECT
 public:
     LabelRow(QWidget* parent = nullptr);
-    void SetTransaction(const Transaction_DEL* trns, const NamesIndex& acc_names, const NamesIndex& cat_names);
+    void SetTransaction(const Transaction_DEL* trns, const NamesIndex& acc_names, const NamesIndex& cat_names, QColor);
 private:
     QLabel* date_;
     QLabel* op_;
@@ -90,7 +90,7 @@ private slots:
 private:
     void AddTransaction(CellTransaction&& ct);
 
-    void FillRecentLine(size_t line_idx, const Transaction_DEL* trns);
+    void FillRecentLine(size_t line_idx, const Transaction_DEL* trns, QColor);
 
     QVector<Row*> rows_;
 

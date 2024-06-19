@@ -8,7 +8,19 @@
 namespace  {
 QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
     QString res = trns_ptr->Date().toString("dd.MM.yy")
-                  + ": " + wallet.GetAccName(trns_ptr->AccountFromIdx());
+                  + "  |  " + wallet.GetAccName(trns_ptr->AccountFromIdx());
+
+    const int center = 40;
+    const int first_line = center - 6;
+    const int line_indent = 22;
+
+    const int line   = center + line_indent;
+
+    const int width  = 99;
+
+    res += QString(first_line - res.size(), ' ');
+
+    res += "|    ";
 
     if (trns_ptr->Type() == TransactionType::Income) {
         res += " <--(";
@@ -18,15 +30,33 @@ QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
         res += " ---[";
     }
 
-    res += trns_ptr->Sum().StringAbs() + " руб.";
+    res += trns_ptr->Sum().StringAbs() + " руб.)";
+
+    res += QString(line - res.size(), '-');
 
     if (trns_ptr->Type() == TransactionType::Income) {
-        res += ")--- " + wallet.GetCatName(trns_ptr->ToIdx());
+        res += "- ";
     } else if (trns_ptr->Type() == TransactionType::Expense) {
-        res += ")--> " + wallet.GetCatName(trns_ptr->ToIdx());
+        res += "> ";
     } else {
-        res += "]--> " + wallet.GetAccName(trns_ptr->ToIdx());
+        res += "> ";
     }
+
+    res += "          |";
+
+    QString to;
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        to = wallet.GetCatName(trns_ptr->ToIdx());
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        to = wallet.GetCatName(trns_ptr->ToIdx());
+    } else {
+        to = wallet.GetAccName(trns_ptr->ToIdx());
+    }
+
+    res += QString(width - res.size() - to.size(), ' ');
+
+    res += to;
 
     return res;
 }
@@ -78,6 +108,10 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     connect(date_to_, &QDateEdit::dateChanged, [this]{
         date_from_->setMaximumDate(date_to_->date());
     });
+
+    QFont font("Monospace");
+
+    list_->setFont(font);
 
     connect(list_, &QListWidget::itemDoubleClicked, this, &TransactionEditor::Edit);
 

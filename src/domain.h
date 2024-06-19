@@ -287,7 +287,6 @@ public:
         , inc_(repr.inc)
         , dec_(repr.dec)
         , childs_{}
-        , deleted_(repr.deleted)
     {
         parent->AddChild(*this);
     }
@@ -301,14 +300,6 @@ public:
 
     std::vector<size_t> GetChilds() const {
         return childs_;
-    }
-
-    void SetDeleted(bool deleted) {
-        deleted_ = deleted;
-    }
-
-    bool isDeleted() const {
-        return deleted_;
     }
 
     model_representation::CategoryRepresentation GetRepresentation() const {
@@ -337,7 +328,6 @@ private:
     bool dec_;
     std::vector<size_t> childs_;
     Category* parent_ = nullptr;
-    bool deleted_ = false;
 };
 
 class Transaction_DEL{
