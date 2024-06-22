@@ -33,6 +33,7 @@ struct CategoryInfo {
     QString name;
     size_t idx;
     int indent;
+    CategoryTypeClass type_;
 };
 
 std::unique_ptr<AccountBase> MakeAccount(AccAdder acc, size_t idx);
@@ -54,19 +55,22 @@ public:
     int AddCategory(const QString& name, int parent_idx, bool inc, bool dec);
     QString GetCatName(size_t idx) const;
     std::set<size_t> GetCategoryChilds(size_t cat_id) const;
+    const Category* GetCategory(size_t cat_id) const;
+    std::pair<bool, bool> GetCategoryChildsType(size_t cat_id) const;
+    void EditCategory(size_t idx, QString new_name, size_t new_parent, bool inc, bool dec);
 
     void AddTransaction(transactions_manager::TransactionAdder transact); //OK
     void AddTransaction(transactions_manager::TransactionAdder transact, size_t idx); //OK
 
-    QVector<const Transaction_DEL*> GetTransacts(TransactShowType type = TransactShowType::All,
+    QVector<const Transaction*> GetTransacts(TransactShowType type = TransactShowType::All,
                                         size_t number = 10, bool late_to_early = true) const;
 
-    QVector<const Transaction_DEL*> GetIncomes(size_t number = 10, bool late_to_early = true) const;
-    QVector<const Transaction_DEL*> GetExpenses(size_t number = 10, bool late_to_early = true) const;
-    QVector<const Transaction_DEL*> GetTransfers(size_t number = 10, bool late_to_early = true) const;
-    QVector<const Transaction_DEL*> GetIncDecTransacts(bool arrive, size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction*> GetIncomes(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction*> GetExpenses(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction*> GetTransfers(size_t number = 10, bool late_to_early = true) const;
+    QVector<const Transaction*> GetIncDecTransacts(bool arrive, size_t number = 10, bool late_to_early = true) const;
 
-    QVector<const Transaction_DEL*> GetTransactFiltred
+    QVector<const Transaction*> GetTransactFiltred
     (QDate from, QDate to, TransactShowType type, size_t acc_id, size_t cat_id) const;
 
     void SaveTransacts() {
@@ -83,7 +87,7 @@ public:
     void SetAccountDeleted(size_t acc_id, bool deleted);
 
     void DeleteTransaction(size_t idx);
-    const Transaction_DEL* FindTransact(size_t idx);
+    const Transaction* FindTransact(size_t idx);
     void EditTransact(size_t idx, transactions_manager::TransactionAdder& adder);
 
 private:

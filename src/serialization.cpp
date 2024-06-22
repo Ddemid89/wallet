@@ -74,20 +74,18 @@ void model_serialization::SerializeAccounts(const QString& file, model_represent
 }
 
 QDataStream& operator<<(QDataStream& out, const model_representation::CategoryRepresentation& cat) {
-    out << cat.dec
+    out << cat.inc_dec
         << cat.deleted
         << cat.id
-        << cat.inc
         << cat.name
         << cat.parent_id;
     return out;
 }
 
 QDataStream& operator>>(QDataStream& in, model_representation::CategoryRepresentation& cat) {
-    in >> cat.dec
+    in >> cat.inc_dec
        >> cat.deleted
        >> cat.id
-       >> cat.inc
        >> cat.name
        >> cat.parent_id;
     return in;

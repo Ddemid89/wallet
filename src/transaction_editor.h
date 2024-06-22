@@ -10,19 +10,21 @@
 #include <QDoubleSpinBox>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QLineEdit>
 #include "mainwindow.h"
 #include "model.h"
 
 class ModalEditor : public QWidget {
     Q_OBJECT
 public:
-    ModalEditor(const Transaction_DEL* trns, Wallet& wallet, QWidget* parent = nullptr) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
+    ModalEditor(const Transaction* trns, Wallet& wallet, QWidget* parent = nullptr) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
         QFormLayout* layout_ = new QFormLayout;
 
         layout_->addRow("Дата:",  date_);
         layout_->addRow("Сумма:", sum_);
         layout_->addRow(acc_lab_,  acc_);
         layout_->addRow(cat_lab_,  cat_);
+        layout_->addRow("Описание:", desc_);
 
         sum_->setMinimum(0.01);
         sum_->setMaximum(1000000);
@@ -32,6 +34,8 @@ public:
 
         date_->setDate(trns->Date());
         date_->setMaximumDate(QDate::currentDate());
+
+        desc_->setText(trns->GetDescription());
 
         if (type_ == TransactionType::Transfer) {
             acc_lab_->setText("Откуда:");
@@ -63,7 +67,7 @@ public:
         setWindowModality(Qt::ApplicationModal);
         setWindowOpacity(0.9);
         setWindowFlag(Qt::Dialog);
-        setFixedSize(300, 150);
+        setFixedSize(300, 180);
 
     }
 
@@ -119,11 +123,12 @@ private slots:
 
     void Submit() {
         transactions_manager::TransactionAdder adder;
-        adder.from_idx = acc_idx_.at(acc_->currentIndex());
-        adder.to_idx   = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
-        adder.date     = date_->date();
-        adder.sum      = sum_->value();
-        adder.type     = type_;
+        adder.from_idx    = acc_idx_.at(acc_->currentIndex());
+        adder.to_idx      = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
+        adder.date        = date_->date();
+        adder.sum         = sum_->value();
+        adder.type        = type_;
+        adder.description = desc_->text().trimmed();
 
         wallet_.EditTransact(trns_->Index(), adder);
     }
@@ -135,13 +140,15 @@ private:
         QDate  new_date = date_->date();
         Money new_sum   = sum_->value();
         size_t new_to   = cat_idx_.at(cat_->currentIndex());
+        QString new_desc = desc_->text().trimmed();
 
-        size_t old_from = trns_->AccountFromIdx();
-        QDate  old_date = trns_->Date();
-        Money old_sum   = trns_->Sum();
-        size_t old_to   = trns_->ToIdx();
+        size_t old_from  = trns_->AccountFromIdx();
+        QDate  old_date  = trns_->Date();
+        Money old_sum    = trns_->Sum();
+        size_t old_to    = trns_->ToIdx();
+        QString old_desc = trns_->GetDescription();
 
-        return new_from == old_from && new_date == old_date && new_sum == old_sum && new_to == old_to;
+        return new_from == old_from && new_date == old_date && new_sum == old_sum && new_to == old_to && new_desc == old_desc;
     }
 
     void FillAccs(QComboBox* cb, size_t idx) {
@@ -180,7 +187,7 @@ private:
         }
     }
 
-    const Transaction_DEL* const trns_;
+    const Transaction* const trns_;
     Wallet& wallet_;
 
     const TransactionType type_;
@@ -193,8 +200,10 @@ private:
     QDoubleSpinBox* sum_ = new QDoubleSpinBox;
     QComboBox* cat_      = new QComboBox;
 
-    QLabel* acc_lab_      = new QLabel;
-    QLabel* cat_lab_      = new QLabel;
+    QLabel* acc_lab_     = new QLabel;
+    QLabel* cat_lab_     = new QLabel;
+
+    QLineEdit* desc_     = new QLineEdit;
 };
 
 
@@ -228,6 +237,10 @@ private:
     QVector<size_t> cats_idxs_;
 
     QVector<size_t> trns_idxs_;
+
+    QLabel* inc_data_ = new QLabel;
+    QLabel* dec_data_ = new QLabel;
+    QLabel* tot_data_ = new QLabel;
 
     void showEvent(QShowEvent *event) override;
 };

@@ -5,6 +5,13 @@
 #include <QMessageBox>
 #include <QSpacerItem>
 #include <QScrollBar>
+#include <QCloseEvent>
+
+const int DATE_W = 126;
+const int OP_W   = 85;
+const int SUM_W  = 120;
+const int FROM_W = 150;
+const int DESC_W = 75;
 
 namespace {
 QLabel* GetLabel(const QString& txt, int w = 0, bool bold = true, int frame = 2) {
@@ -65,11 +72,12 @@ CellWindow::CellWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent) : 
     QPushButton* add_row = new QPushButton("+");
     QPushButton* del_row = new QPushButton("-");
 
-    head->addWidget(GetLabel("Дата",      81));
-    head->addWidget(GetLabel("Операция",  85));
-    head->addWidget(GetLabel("Сумма",     120));
-    head->addWidget(GetLabel("Откуда",     150));
-    head->addWidget(GetLabel("Куда"));
+    head->addWidget(GetLabel("Дата",      DATE_W));
+    head->addWidget(GetLabel("Операция",  OP_W));
+    head->addWidget(GetLabel("Сумма",     SUM_W));
+    head->addWidget(GetLabel("Откуда",    FROM_W));
+    head->addWidget(GetLabel("Куда"          ));
+    head->addWidget(GetLabel("Описание",  DESC_W));
     head->addSpacerItem(new QSpacerItem(15, 3));
 
     connect(add_row, SIGNAL(clicked()), SLOT(AddRow()));
@@ -85,6 +93,12 @@ CellWindow::CellWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent) : 
 
     main_layout_->addLayout(button_layout);
     main_layout_->setSpacing(0);
+
+    layout_->addSpacerItem(new QSpacerItem(10,10));
+    QPushButton* done = new QPushButton("Добавить");
+    done->setFixedWidth(120);
+    layout_->addWidget(done, 0, Qt::AlignCenter);
+    connect(done, &QPushButton::clicked, this, &CellWindow::Done);
 }
 
 void CellWindow::Deactivate() {
@@ -97,16 +111,10 @@ void CellWindow::Deactivate() {
     reply = QMessageBox::question(this, "Закрытие", "Сохранить введенные транзакции?", QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        for (auto widget : rows_) {
-            AddTransaction(widget->Get());
-        }
+        AddAllTransactions();
     }
 
-    for (auto widget : rows_) {
-        cells_layout_->removeWidget(widget);
-        delete widget;
-    }
-    rows_.clear();
+    DeleteRows();
 }
 
 void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
@@ -129,7 +137,7 @@ void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
     scroll_->setMaximum(qMax(0, static_cast<int>(recent_ops_.size() - RECENT_LINES)));
 
     FillRecent();
-    scroll_->setValue(0);
+    scroll_->setValue(scroll_->maximum());
 }
 
 void CellWindow::AddRow() {
@@ -169,6 +177,12 @@ void CellWindow::FillRecent() {
     }
 }
 
+void CellWindow::Done() {
+    AddAllTransactions();
+    DeleteRows();
+    GetAndFillRecent();
+}
+
 void CellWindow::AddTransaction(CellTransaction&& ct) {
     transactions_manager::TransactionAdder adder;
     if (ct.type == OpType::Inc) {
@@ -178,21 +192,47 @@ void CellWindow::AddTransaction(CellTransaction&& ct) {
     } else {
         adder.type = TransactionType::Transfer;
     }
-    adder.date     = ct.date;
-    adder.from_idx = ct.from;
-    adder.to_idx   = ct.to;
-    adder.sum      = ct.sum;
+    adder.date        = ct.date;
+    adder.from_idx    = ct.from;
+    adder.to_idx      = ct.to;
+    adder.sum         = ct.sum;
+    adder.description = ct.description;
     Q_ASSERT(adder.IsValid());
     wallet_.AddTransaction(adder);
 }
 
-void CellWindow::FillRecentLine(size_t line_idx, const Transaction_DEL *trns, QColor color) {
+void CellWindow::FillRecentLine(size_t line_idx, const Transaction *trns, QColor color) {
     Q_ASSERT(line_idx < RECENT_LINES);
 
     LabelRow& line = *recent_ops_lines_[line_idx];
 
     line.SetTransaction(trns, acc_id_to_name_, cat_id_to_name_, color);
 }
+
+void CellWindow::AddAllTransactions() {
+    for (auto widget : rows_) {
+        AddTransaction(widget->Get());
+    }
+}
+
+void CellWindow::DeleteRows() {
+    for (auto widget : rows_) {
+        cells_layout_->removeWidget(widget);
+        delete widget;
+    }
+    rows_.clear();
+}
+
+void CellWindow::GetAndFillRecent() {
+    recent_ops_ = wallet_.GetTransacts(TransactShowType::All, 50, true);
+
+    scroll_->setMinimum(0);
+    scroll_->setMaximum(qMax(0, static_cast<int>(recent_ops_.size() - RECENT_LINES)));
+
+    FillRecent();
+    scroll_->setValue(scroll_->maximum());
+}
+
 
 Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget *parent)
     : QWidget{parent}, wallet_{wallet} {
@@ -205,7 +245,7 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     sum_->setMinimum(0.01);
     sum_->setMaximum(1000000.);
     sum_->setSuffix(" руб.");
-    sum_->setFixedWidth(120);
+    sum_->setFixedWidth(SUM_W);
 
     connect(op_, &QComboBox::currentIndexChanged, this, &Row::ChangeOp);
     op_->addItem("Расход");
@@ -213,22 +253,31 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     if (wallet_.AccounsExist() > 1) {
         op_->addItem("Перевод");
     }
-    op_->setFixedWidth(85);
+    op_->setFixedWidth(OP_W);
     op_->setCurrentIndex(op);
 
-    acc_from_->setFixedWidth(150);
+    acc_from_->setFixedWidth(FROM_W);
 
     connect(acc_cat_to_, &QComboBox::currentIndexChanged, this, &Row::ChangeCat);
     connect(acc_from_,   &QComboBox::currentIndexChanged, this, &Row::ChangeAcc);
+
+    add_desc_->setFixedWidth(DESC_W);
+    add_desc_->setToolTip("Описание отсутствует");
 
     layout->addWidget(date_label_);
     layout->addWidget(op_);
     layout->addWidget(sum_);
     layout->addWidget(acc_from_);
     layout->addWidget(acc_cat_to_);
+    layout->addWidget(add_desc_);
 
-    date_label_->setAlignment(Qt::AlignCenter);
-    date_label_->setFixedWidth(80);
+    connect(add_desc_, &QPushButton::clicked, [this]{
+        ModalDescriptionEditor* mde = new ModalDescriptionEditor(*this);
+        mde->show();
+    });
+
+    date_label_->setAlignment(Qt::AlignLeft);
+    date_label_->setFixedWidth(DATE_W - 1);
     date_label_->setDisplayFormat("dd.MM.yy");
     date_label_->setDate(date);
     date_label_->setMaximumDate(QDate::currentDate());
@@ -236,7 +285,6 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     FillAcs(*acc_from_);
 
     acc_from_->setCurrentIndex(acc);
-
     acc_cat_to_->setCurrentIndex(cat);
 
     setContentsMargins(0, 0, 0, 0);
@@ -265,6 +313,7 @@ CellTransaction Row::Get() {
 
     res.sum  = sum_->value();
     res.from = acc_idx_.at(acc_from_->currentIndex());
+    res.description = potential_description_.trimmed();
 
     return res;
 }
@@ -360,14 +409,24 @@ void Row::FillCats(bool inc) {
 
 }
 
+QString Row::GetDescription() const {
+    return potential_description_;
+}
+
+void Row::SetDescription(const QString& new_desc_) {
+    potential_description_ = new_desc_;
+    add_desc_->setToolTip(new_desc_);
+}
+
 LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     QHBoxLayout* layout_ = new QHBoxLayout;
 
-    date_ = GetLabel("-", 81,  false, 1);
-    op_   = GetLabel("-", 85,  false, 1);
-    sum_  = GetLabel("-", 120, false, 1);
-    from_ = GetLabel("-", 150, false, 1);
+    date_ = GetLabel("-", DATE_W,  false, 1);
+    op_   = GetLabel("-", OP_W,  false, 1);
+    sum_  = GetLabel("-", SUM_W, false, 1);
+    from_ = GetLabel("-", FROM_W, false, 1);
     to_   = GetLabel("-", 0,   false, 1);
+    desc_ = GetLabel("-", DESC_W,  false, 1);
 
     date_->setAlignment(Qt::AlignLeft);
     op_->setAlignment(Qt::AlignLeft);
@@ -383,13 +442,14 @@ LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     layout_->addWidget(sum_);
     layout_->addWidget(from_);
     layout_->addWidget(to_);
+    layout_->addWidget(desc_);
 
     setContentsMargins(0, 0, 0, 0);
 
     setLayout(layout_);
 }
 
-void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc_names, const NamesIndex& cat_names, QColor color) {
+void LabelRow::SetTransaction(const Transaction *trns, const NamesIndex& acc_names, const NamesIndex& cat_names, QColor color) {
     date_->setText(trns->Date().toString("dd.MM.yy"));
     sum_->setText(trns->Sum().StringAbs());
     from_->setText(acc_names.at(trns->AccountFromIdx()));
@@ -402,6 +462,21 @@ void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc
         op_->setText(trns->Type() == TransactionType::Income ? "Доход" : "Расход");
     }
 
+    QString desc = trns->GetDescription();
+
+    if (desc != "") {
+        if (desc.size() > 5) {
+            desc_->setText(desc.first(5) + "...");
+        } else {
+            desc_->setText(desc);
+        }
+        desc_->setToolTip(desc);
+        desc_->setAlignment(Qt::AlignLeft);
+    } else {
+        desc_->setAlignment(Qt::AlignCenter);
+        desc_->setText("-");
+    }
+
     QPalette pl;
     pl.setColor(QPalette::WindowText, color);
 
@@ -410,4 +485,32 @@ void LabelRow::SetTransaction(const Transaction_DEL *trns, const NamesIndex& acc
     from_->setPalette(pl);
     to_->setPalette(pl);
     op_->setPalette(pl);
+    desc_->setPalette(pl);
+}
+
+void ModalDescriptionEditor::Done() {
+    row_.SetDescription(new_desc_->text().trimmed());
+    delete this;
+}
+
+void ModalDescriptionEditor::closeEvent(QCloseEvent* event) {
+    if (new_desc_->text().trimmed() == row_.GetDescription()) {
+        delete this;
+        return;
+    }
+
+    QMessageBox::StandardButton reply
+        = QMessageBox::question(this, "Сохранить изменения", "Сохоанить новое описание?",
+                                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+
+    if (reply == QMessageBox::Cancel) {
+        event->ignore();
+        return;
+    }
+
+    if (reply == QMessageBox::Yes) {
+        row_.SetDescription(new_desc_->text().trimmed());
+    }
+    delete this;
 }

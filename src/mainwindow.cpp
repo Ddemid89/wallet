@@ -4,6 +4,7 @@
 #include <QMenuBar>
 #include <QToolBar>
 #include <map>
+#include <QCloseEvent>
 
 void MainWindow::SetFirstWidget(QWidget* widget) {
     widgets_->addWidget(widget);
@@ -154,6 +155,13 @@ void MainWindow::change_window(WidgetType type) {
     }
 
     widgets_->setCurrentIndex(idx);
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    if (widgets_->currentIndex() != 0) {
+        event->ignore();
+        go_to_first();
+    }
 }
 
 void MainWindow::go_to_first() {

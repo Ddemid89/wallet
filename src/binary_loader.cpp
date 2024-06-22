@@ -14,7 +14,8 @@ QDataStream& operator<<(QDataStream& out, const model_representation::Transactio
         << trs.id
         << trs.sum
         << trs.to_id
-        << trs.type;
+        << trs.type
+        << trs.description;
     return out;
 }
 QDataStream& operator>>(QDataStream& in, model_representation::TransactionRepresentation& trs) {
@@ -23,7 +24,8 @@ QDataStream& operator>>(QDataStream& in, model_representation::TransactionRepres
        >> trs.id
        >> trs.sum
        >> trs.to_id
-       >> trs.type;
+       >> trs.type
+       >> trs.description;
     return in;
 }
 

@@ -92,6 +92,23 @@ void Deposit::Visit(AccVisitorInterface& widget) {
     widget.SetAccount(*this);
 }
 
+model_representation::AccountRepresentation Deposit::GetRepresentation() const {
+    model_representation::AccountRepresentation res;
+
+    res.id = idx_;
+    res.name = name_;
+    res.balance_kopek = sum_.Kopek();
+    res.consider = consider_;
+    res.deleted = deleted_;
+    res.perc_rate = percent_rate_;
+    res.payday = payday_;
+    res.next_pay = next_pay_;
+
+    res.type = static_cast<int>(AccountType::Deposit);
+
+    return res;
+}
+
 OverdraftCard::OverdraftCard(SimpleAcc acc, double percent_rate, int payday, Money overdraft)
     : PercentBase(std::move(acc), percent_rate, payday)
     , overdraft_(overdraft) {}
@@ -141,15 +158,25 @@ void OverdraftCard::SetOverdraft(Money money) {
 }
 
 Category::Category(size_t idx, QString name, bool inc, bool dec)
-    : idx_(idx), name_(std::move(name)), inc_(inc), dec_(dec) {}
+    : idx_(idx), name_(std::move(name)), inc_dec_(inc, dec) {
+}
+
+Category::Category(const model_representation::CategoryRepresentation &repr, Category *parent)
+    : idx_(repr.id)
+    , name_(repr.name)
+    , inc_dec_{static_cast<CategoryType>(repr.inc_dec)}
+    , childs_{}
+{
+    parent->AddChild(*this);
+}
 
 void Category::AddChild(Category& child) {
     child.parent_ = this;
     childs_.push_back(child.idx_);
-    if (child.inc_) {
+    if (child.isInc()) {
         SetInc();
     }
-    if (child.dec_) {
+    if (child.isDec()) {
         SetDec();
     }
 }
@@ -159,87 +186,152 @@ QString Category::GetName() const {
 }
 
 bool Category::isInc() const {
-    return inc_;
+    return inc_dec_.IsInc();
 }
 
 bool Category::isDec() const {
-    return dec_;
+    return inc_dec_.IsDec();
+}
+
+CategoryType Category::GetType() const {
+    return inc_dec_;
+}
+
+std::vector<size_t> Category::GetChilds() const {
+    return childs_;
+}
+
+size_t Category::GetId() const {
+    return idx_;
+}
+
+size_t Category::GetParentId() const {
+    if (!parent_) {
+        throw std::logic_error("Parent == nullptr in Category::GetParentId");
+    }
+    return parent_->idx_;
+}
+
+void Category::EditCategory(QString new_name, Category *new_parent, bool inc, bool dec) {
+    name_    = new_name;
+    parent_  = new_parent;
+    inc_dec_ = CategoryTypeClass(inc, dec);
+
+    if (new_parent && inc) {
+        new_parent->SetInc();
+    }
+
+    if (new_parent && dec) {
+        new_parent->SetDec();
+    }
+}
+
+model_representation::CategoryRepresentation Category::GetRepresentation() const {
+    model_representation::CategoryRepresentation res;
+
+    res.name = name_;
+    res.inc_dec = static_cast<quint8>(inc_dec_);
+    res.id = idx_;
+
+    if (parent_ != nullptr) {
+        res.parent_id = parent_->idx_;
+    } else {
+        res.parent_id = 0;
+    }
+
+    return res;
 }
 
 void Category::SetInc() {
-    inc_ = true;
+    if (inc_dec_ == CategoryType::Dec) {
+        inc_dec_ = CategoryType::Both;
+    }
+    inc_dec_ = CategoryType::Both;
     if (parent_ != nullptr) {
         parent_->SetInc();
     }
 }
 
 void Category::SetDec() {
-    dec_ = true;
+    if (inc_dec_ == CategoryType::Inc) {
+        inc_dec_ = CategoryType::Both;
+    }
     if (parent_ != nullptr) {
         parent_->SetDec();
     }
 }
 
-Transaction_DEL::Transaction_DEL(size_t idx, size_t from, size_t to, TransactionType trs_type, QDate date, Money sum)
+Transaction::Transaction(size_t idx, size_t from, size_t to, TransactionType trs_type, QDate date, Money sum, QString description)
     : date_(date)
     , account_from_idx_(from)
     , idx_(idx)
     , sum_(sum)
     , to_idx_(to)
     , type_(trs_type)
+    , description_(description)
 {}
 
-Transaction_DEL::Transaction_DEL(model_representation::TransactionRepresentation& trs)
+Transaction::Transaction(model_representation::TransactionRepresentation& trs)
     : date_(trs.date)
     , account_from_idx_(trs.from_id)
     , idx_(trs.id)
     , sum_(trs.sum)
     , to_idx_(trs.to_id)
     , type_(static_cast<TransactionType>(trs.type))
+    , description_(trs.description)
 {}
 
 
-size_t Transaction_DEL::Index() const {
+size_t Transaction::Index() const {
     return idx_;
 }
 
-size_t Transaction_DEL::AccountFromIdx() const {
+size_t Transaction::AccountFromIdx() const {
     return account_from_idx_;
 }
 
-size_t Transaction_DEL::ToIdx() const {
+size_t Transaction::ToIdx() const {
     return to_idx_;
 }
 
-QDate Transaction_DEL::Date() const {
+QDate Transaction::Date() const {
     return date_;
 }
 
-Money Transaction_DEL::Sum() const {
+Money Transaction::Sum() const {
     return sum_;
 }
 
-TransactionType Transaction_DEL::Type() const {
+TransactionType Transaction::Type() const {
     return type_;
 }
 
-model_representation::TransactionRepresentation Transaction_DEL::GetRepresentation() const {
+model_representation::TransactionRepresentation Transaction::GetRepresentation() const {
     model_representation::TransactionRepresentation res;
-    res.date    = date_;
-    res.from_id = account_from_idx_;
-    res.id      = idx_;
-    res.sum     = sum_.Kopek();
-    res.to_id   = to_idx_;
-    res.type    = static_cast<int>(type_);
+    res.date        = date_;
+    res.from_id     = account_from_idx_;
+    res.id          = idx_;
+    res.sum         = sum_.Kopek();
+    res.to_id       = to_idx_;
+    res.type        = static_cast<int>(type_);
+    res.description = description_;
     return res;
 }
 
-bool Transaction_DEL::operator<(const Transaction_DEL& other) const {
+QString Transaction::GetDescription() const {
+    return description_;
+}
+
+void Transaction::SetDescription(QString new_discription) {
+    description_ = new_discription;
+}
+
+bool Transaction::operator<(const Transaction& other) const {
     return date_ < other.date_
            || (date_ == other.date_ && idx_ < other.idx_);
 }
 
-void Transaction_DEL::Swap(Transaction_DEL& other) {
+void Transaction::Swap(Transaction& other) {
     std::swap(date_,             other.date_);
     std::swap(account_from_idx_, other.account_from_idx_);
     std::swap(idx_,              other.idx_);
@@ -337,3 +429,40 @@ Money& Money::operator=(double val) {
 }
 
 
+
+CategoryTypeClass::CategoryTypeClass() {
+    type_ = CategoryType::Both;
+}
+
+CategoryTypeClass::CategoryTypeClass(bool inc, bool dec) {
+    Q_ASSERT(inc || dec);
+    if (inc) {
+        if (dec) {
+            type_ = CategoryType::Both;
+        } else {
+            type_ = CategoryType::Inc;
+        }
+    } else {
+        type_ = CategoryType::Dec;
+    }
+}
+
+CategoryTypeClass::operator int() const {
+    return static_cast<int>(type_);
+}
+
+CategoryTypeClass::operator quint8() const {
+    return static_cast<quint8>(type_);
+}
+
+CategoryTypeClass::operator CategoryType() const {
+    return type_;
+}
+
+bool CategoryTypeClass::IsInc() const {
+    return type_ == CategoryType::Both || type_ == CategoryType::Inc;
+}
+
+bool CategoryTypeClass::IsDec() const {
+    return type_ == CategoryType::Both || type_ == CategoryType::Dec;
+}

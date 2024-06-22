@@ -40,6 +40,7 @@ public slots:
     void go_to_first();
     void show_status(const QString& txt);
     void change_window(WidgetType type);
+    void closeEvent(QCloseEvent*) override;
 private:
     Wallet& wallet_;
 

@@ -19,16 +19,16 @@ void TransactionsManager::AddTransaction(TransactionAdder& trs) {
 void TransactionsManager::AddTransaction(TransactionAdder &trs, size_t idx) {
     Load(trs.date);
 
-    Transaction_DEL new_trns{idx, static_cast<size_t>(trs.from_idx),
+    Transaction new_trns(idx, static_cast<size_t>(trs.from_idx),
                              static_cast<size_t>(trs.to_idx),
-                             trs.type, trs.date, trs.sum};
+                             trs.type, trs.date, trs.sum, trs.description);
 
     auto pair = transacts_.insert(new_trns);
-    const Transaction_DEL* addr = &(*pair.first);
+    const Transaction* addr = &(*pair.first);
     trns_idx_[idx] = addr;
 }
 
-QVector<const Transaction_DEL*> TransactionsManager::GetTransacts(TransactShowType type, size_t number, bool late_to_early) {
+QVector<const Transaction*> TransactionsManager::GetTransacts(TransactShowType type, size_t number, bool late_to_early) {
     if (late_to_early) {
         return GetTransacts(transacts_.cbegin(), transacts_.cend(), number, type);
     } else {
@@ -36,12 +36,12 @@ QVector<const Transaction_DEL*> TransactionsManager::GetTransacts(TransactShowTy
     }
 }
 
-QVector<const Transaction_DEL*> TransactionsManager::GetTransactFiltred(QDate from, QDate to, TransactShowType type) {
+QVector<const Transaction*> TransactionsManager::GetTransactFiltred(QDate from, QDate to, TransactShowType type) {
     Load(from, to);
 
-    QVector<const Transaction_DEL*> result;
+    QVector<const Transaction*> result;
 
-    Transaction_DEL l_bound(0, 0, 0, TransactionType::Income, from, 0);
+    Transaction l_bound(0, 0, 0, TransactionType::Income, from, 0);
 
     auto it = transacts_.lower_bound(l_bound);
 
@@ -57,8 +57,8 @@ QVector<const Transaction_DEL*> TransactionsManager::GetTransactFiltred(QDate fr
     return result;
 }
 
-const Transaction_DEL* TransactionsManager::FindTransact(size_t idx) {
-    std::unique_ptr<Transaction_DEL> tmp;
+const Transaction* TransactionsManager::FindTransact(size_t idx) {
+    std::unique_ptr<Transaction> tmp;
     return trns_idx_.at(idx);
 }
 

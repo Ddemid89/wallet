@@ -35,6 +35,7 @@ public:
 
         return result;
     }
+
     void Save(transactions_manager::Date date, model_representation::TransactionsPart&& transacts) override {
         QString path = GetPath(date);
         QFile file(path);

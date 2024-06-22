@@ -7,7 +7,7 @@
 #include <QMessageBox>
 
 namespace  {
-QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
+QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
     QString res = trns_ptr->Date().toString("dd.MM.yy")
                   + ": " + wallet.GetAccName(trns_ptr->AccountFromIdx());
 

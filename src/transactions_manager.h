@@ -43,6 +43,7 @@ struct TransactionAdder{
     QDate date;
     Money sum;
     TransactionType type;
+    QString description;
     bool IsValid() const {
         return type != TransactionType::Transfer || (type == TransactionType::Transfer && from_idx != to_idx);
     }
@@ -81,10 +82,10 @@ public:
 
     void AddTransaction(TransactionAdder& trs, size_t idx);
 
-    QVector<const Transaction_DEL*> GetTransacts(TransactShowType type = TransactShowType::All,
+    QVector<const Transaction*> GetTransacts(TransactShowType type = TransactShowType::All,
                                         size_t number = 10, bool late_to_early = true);
 
-    QVector<const Transaction_DEL*> GetTransactFiltred (QDate from, QDate to, TransactShowType type);
+    QVector<const Transaction*> GetTransactFiltred (QDate from, QDate to, TransactShowType type);
 
     void Save() {
         auto parts = GetRepresentations();
@@ -97,7 +98,7 @@ public:
         }
     }
 
-    const Transaction_DEL* FindTransact(size_t idx);
+    const Transaction* FindTransact(size_t idx);
     void DeleteTransact(size_t idx);
 
 private:
@@ -118,7 +119,7 @@ private:
 
     void Restore(model_representation::TransactionsPart&& part) {
         for (auto& trs : part.trs) {
-            Transaction_DEL new_trs{trs};
+            Transaction new_trs{trs};
 
             auto pair = transacts_.insert(new_trs);
             trns_idx_[trs.id] = &(*pair.first);
@@ -139,8 +140,8 @@ private:
     }
 
     template<class It>
-    QVector<const Transaction_DEL*> GetTransacts(It begin, It end, size_t number, TransactShowType type) {
-        QVector<const Transaction_DEL*> result;
+    QVector<const Transaction*> GetTransacts(It begin, It end, size_t number, TransactShowType type) {
+        QVector<const Transaction*> result;
 
         TransactionMatcher matcher(type);
 
@@ -158,8 +159,8 @@ private:
 
     std::set<Date> loaded_;
 
-    std::unordered_map<size_t, const Transaction_DEL*> trns_idx_;
-    std::set<Transaction_DEL> transacts_;
+    std::unordered_map<size_t, const Transaction*> trns_idx_;
+    std::set<Transaction> transacts_;
 
     size_t GetNewId() {
         return transact_id_++;

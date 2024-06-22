@@ -12,6 +12,12 @@
 #include "binary_loader.h"
 #include "cell_w.h"
 
+// TODO Сделать JSON сериализацию
+// TODO При входе в приложение, если нет ни одного счета/категории, предложить их создание
+// TODO Создать необходимые директории, если их нет
+// TODO Продумать меню с учетом изменений
+// TODO Разобраться с документированием
+
 const QString ACC_FILE = "../../data/accs.bin";
 const QString CAT_FILE = "../../data/cats.bin";
 const QString TRANSACTION_DIR = "../../data/transactions";

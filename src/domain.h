@@ -5,6 +5,7 @@
 #include <QDate>
 
 #include "model_representation.h"
+#include <algorithm>
 
 enum class TransactShowType {
     Income,
@@ -12,6 +13,29 @@ enum class TransactShowType {
     Transfer,
     All,
     IncExp
+};
+
+enum class CategoryType {
+    Inc,
+    Dec,
+    Both
+};
+
+class CategoryTypeClass {
+public:
+    CategoryTypeClass();
+    CategoryTypeClass(bool inc, bool dec);
+    CategoryTypeClass(CategoryType type) : type_{type} {}
+
+    explicit operator int() const;
+    explicit operator quint8() const;
+    operator CategoryType() const;
+
+    bool IsInc() const;
+    bool IsDec() const;
+
+private:
+    CategoryType type_;
 };
 
 enum class TransactionType{
@@ -224,22 +248,7 @@ public:
     void operator+=(Money rhs) override;
     void operator-=(Money rhs) override;
     void Visit(AccVisitorInterface& widget) override;
-    model_representation::AccountRepresentation GetRepresentation() const override {
-        model_representation::AccountRepresentation res;
-
-        res.id = idx_;
-        res.name = name_;
-        res.balance_kopek = sum_.Kopek();
-        res.consider = consider_;
-        res.deleted = deleted_;
-        res.perc_rate = percent_rate_;
-        res.payday = payday_;
-        res.next_pay = next_pay_;
-
-        res.type = static_cast<int>(AccountType::Deposit);
-
-        return res;
-    }
+    model_representation::AccountRepresentation GetRepresentation() const override;
 };
 
 class OverdraftCard : public PercentBase {
@@ -281,59 +290,41 @@ private:
 class Category {
 public:
     Category(size_t idx, QString name, bool inc, bool dec);
-    Category(const model_representation::CategoryRepresentation& repr, Category* parent)
-        : idx_(repr.id)
-        , name_(repr.name)
-        , inc_(repr.inc)
-        , dec_(repr.dec)
-        , childs_{}
-    {
-        parent->AddChild(*this);
-    }
+    Category(const model_representation::CategoryRepresentation& repr, Category* parent);
 
     void AddChild(Category& child);
     QString GetName() const;
 
     bool isInc() const;
-
     bool isDec() const;
+    CategoryType GetType() const;
 
-    std::vector<size_t> GetChilds() const {
-        return childs_;
+    std::vector<size_t> GetChilds() const;
+    size_t GetId() const;
+    size_t GetParentId() const;
+
+    void EditCategory(QString new_name, Category* new_parent, bool inc, bool dec);
+
+    void DeleteChild(size_t idx) {
+        childs_.erase(std::remove(childs_.begin(), childs_.end(), idx), childs_.end());
     }
 
-    model_representation::CategoryRepresentation GetRepresentation() const {
-        model_representation::CategoryRepresentation res;
-
-        res.name = name_;
-        res.inc = inc_;
-        res.dec = dec_;
-        res.id = idx_;
-
-        if (parent_ != nullptr) {
-            res.parent_id = parent_->idx_;
-        } else {
-            res.parent_id = 0;
-        }
-
-        return res;
-    }
+    model_representation::CategoryRepresentation GetRepresentation() const;
 private:
     void SetInc();
     void SetDec();
 
     size_t idx_;
     QString name_;
-    bool inc_;
-    bool dec_;
+    CategoryTypeClass inc_dec_;
     std::vector<size_t> childs_;
     Category* parent_ = nullptr;
 };
 
-class Transaction_DEL{
+class Transaction{
 public:
-    Transaction_DEL(size_t idx, size_t from, size_t to, TransactionType type, QDate date, Money sum);
-    Transaction_DEL(model_representation::TransactionRepresentation& trs);
+    Transaction(size_t idx, size_t from, size_t to, TransactionType type, QDate date, Money sum, QString description = "");
+    Transaction(model_representation::TransactionRepresentation& trs);
     size_t Index() const;
     size_t AccountFromIdx() const;
     size_t ToIdx() const;
@@ -342,8 +333,12 @@ public:
     TransactionType Type() const;
     bool Income();
     model_representation::TransactionRepresentation GetRepresentation() const;
-    bool operator<(const Transaction_DEL& other) const;
-    void Swap(Transaction_DEL& other);
+
+    QString GetDescription() const;
+    void SetDescription(QString new_discription);
+
+    bool operator<(const Transaction& other) const;
+    void Swap(Transaction& other);
 protected:
     QDate date_;
     size_t account_from_idx_;
@@ -351,6 +346,7 @@ protected:
     Money sum_;
     size_t to_idx_;
     TransactionType type_;
+    QString description_;
 };
 
 #endif // DOMAIN_H

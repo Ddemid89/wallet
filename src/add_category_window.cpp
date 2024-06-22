@@ -4,6 +4,7 @@
 #include <QPushButton>
 #include <QListWidget>
 #include <QLabel>
+#include "category_editor.h"
 
 AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                                         : Widgets(wallet, m_window, parent) {
@@ -84,14 +85,25 @@ void AddCategoryWindow::submit() {
 
 void AddCategoryWindow::Edit() {
     int cur_row = list_view->currentRow();
-    if (cur_row == -1) {
+    if (cur_row == -1 || cur_row == 0) {
         return;
     }
 
-    auto cat = cats_->at(cur_row);
+    size_t cat_id = cats_->at(cur_row).idx;
 
-    qDebug() << cat.name << "( id:" << cat.idx << ")";
+    if (cat_id == 0) {
+        return;
+    }
 
+    CategoryEditor* ce = new CategoryEditor(wallet_, cat_id);
+    connect(ce, &CategoryEditor::Changed, this, &AddCategoryWindow::Update);
+    ce->show();
+}
+
+void AddCategoryWindow::Update() {
+    cats_.reset();
+    size_t idx = cats_->at(list_view->currentRow()).idx;
+    FillCategories(idx);
 }
 
 void AddCategoryWindow::FillData(int n) {
@@ -105,7 +117,8 @@ void AddCategoryWindow::showEvent(QShowEvent*) {
     FillData();
 }
 
-void AddCategoryWindow::FillCategories(int n) {
+void AddCategoryWindow::FillCategories(size_t n) {
+    const QString types[] = {"+", "-", "+-"};
     if (!cats_.has_value()) {
         cats_ = wallet_.GetAllCategories();
     }
@@ -128,9 +141,14 @@ void AddCategoryWindow::FillCategories(int n) {
             item += "+---";
         }
 
-        item += category.name;
+        item += category.name + " (";
+
+        item += types[static_cast<int>(category.type_)] + ")";
 
         list_view->addItem(item);
+
+        if (category.idx == n) {
+            list_view->setCurrentRow(list_view->count() - 1);
+        }
     }
-    list_view->setCurrentRow(n);
 }

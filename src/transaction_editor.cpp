@@ -5,34 +5,53 @@
 #include <QPushButton>
 #include <QListWidget>
 
+#ifdef Q_OS_WINDOWS
+    const auto MONOSPACE_FONT = "Courier";
+#else
+    const auto MONOSPACE_FONT = "Monospace";
+#endif
+
 namespace  {
-QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
+QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
     QString res = trns_ptr->Date().toString("dd.MM.yy")
                   + "  |  " + wallet.GetAccName(trns_ptr->AccountFromIdx());
 
-    const int center = 40;
-    const int first_line = center - 6;
-    const int line_indent = 22;
+    const int first_h_line = 34;
+    const int arrow_indent = 3;
+    const int arrow_length = 23;
+    const int arrow_tail   = 6;
+    const int second_h_line_indent = 6;
+    const int width  = 97;
 
-    const int line   = center + line_indent;
+    const int arrow_start  = first_h_line + arrow_indent;
+    const int sum_end      = arrow_start + arrow_length - arrow_tail;
 
-    const int width  = 99;
+    res += QString(first_h_line - res.size(), ' ');
 
-    res += QString(first_line - res.size(), ' ');
-
-    res += "|    ";
+    res += "|" + QString(arrow_indent, ' ');
 
     if (trns_ptr->Type() == TransactionType::Income) {
-        res += " <--(";
-    } else if (trns_ptr->Type() == TransactionType::Expense) {
-        res += " ---(";
+        res += " <";
     } else {
-        res += " ---[";
+        res += " -";
     }
 
-    res += trns_ptr->Sum().StringAbs() + " руб.)";
+    QString sum_str = trns_ptr->Sum().StringAbs();
 
-    res += QString(line - res.size(), '-');
+    res += QString(sum_end - res.size() - sum_str.size(), '-');
+
+    if (trns_ptr->Type() == TransactionType::Income) {
+        res += "(";
+    } else if (trns_ptr->Type() == TransactionType::Expense) {
+        res += "(";
+    } else {
+        res += "[";
+    }
+
+
+    res += sum_str + " руб.)";
+
+    res += QString(arrow_tail - 1, '-');
 
     if (trns_ptr->Type() == TransactionType::Income) {
         res += "- ";
@@ -42,7 +61,7 @@ QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
         res += "> ";
     }
 
-    res += "          |";
+    res += QString(second_h_line_indent, ' ') + "|";
 
     QString to;
 
@@ -60,12 +79,18 @@ QString FormatOperation(Wallet& wallet, const Transaction_DEL* trns_ptr) {
 
     return res;
 }
+
+QString MakeLength(QString txt, size_t len) {
+    return QString(len - txt.size(), ' ') + txt;
+}
+
 }
 
 TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                             : Widgets(wallet, m_window, parent) {
     QHBoxLayout* date_select_ = new QHBoxLayout;
     QHBoxLayout* type_select_ = new QHBoxLayout;
+    QHBoxLayout* btns_layout_ = new QHBoxLayout;
 
     QPushButton* show_data = new QPushButton("Показать");
 
@@ -98,9 +123,65 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     layout_->addLayout(date_select_);
     layout_->addLayout(type_select_);
     layout_->addWidget(show_data);
+    layout_->addLayout(btns_layout_);
     layout_->addWidget(list_);
 
     setLayout(layout_);
+
+    QVBoxLayout* info_layout = new QVBoxLayout;
+    QHBoxLayout* inc_info    = new QHBoxLayout;
+    QHBoxLayout* dec_info    = new QHBoxLayout;
+    QHBoxLayout* tot_info    = new QHBoxLayout;
+
+    QFont font(MONOSPACE_FONT);
+
+    info_layout->addLayout(inc_info);
+    info_layout->addLayout(dec_info);
+    info_layout->addLayout(tot_info);
+
+    QLabel* inc_label = new QLabel("Итого доходов: |");
+    QLabel* dec_label = new QLabel("Итого расходов: |");
+    QLabel* tot_label = new QLabel("Итого: |");
+
+    QLabel* inc_end = new QLabel("|");
+    QLabel* dec_end = new QLabel("|");
+    QLabel* tot_end = new QLabel("|");
+
+    inc_label->setFixedWidth(278);
+    dec_label->setFixedWidth(278);
+    tot_label->setFixedWidth(278);
+
+    inc_end->setFixedWidth(200);
+    dec_end->setFixedWidth(200);
+    tot_end->setFixedWidth(200);
+
+    inc_info->addWidget(inc_label);
+    dec_info->addWidget(dec_label);
+    tot_info->addWidget(tot_label);
+
+    inc_info->addWidget(inc_data_);
+    dec_info->addWidget(dec_data_);
+    tot_info->addWidget(tot_data_);
+
+    inc_info->addWidget(inc_end);
+    dec_info->addWidget(dec_end);
+    tot_info->addWidget(tot_end);
+
+    inc_label->setFont(font);
+    dec_label->setFont(font);
+    tot_label->setFont(font);
+
+    inc_end->setFont(font);
+    dec_end->setFont(font);
+    tot_end->setFont(font);
+
+    inc_data_->setFont(font);
+    dec_data_->setFont(font);
+    tot_data_->setFont(font);
+
+    inc_label->setAlignment(Qt::AlignRight);
+    dec_label->setAlignment(Qt::AlignRight);
+    tot_label->setAlignment(Qt::AlignRight);
 
     connect(date_from_, &QDateEdit::dateChanged, [this]{
         date_to_->setMinimumDate(date_from_->date());
@@ -109,7 +190,7 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
         date_from_->setMaximumDate(date_to_->date());
     });
 
-    QFont font("Monospace");
+
 
     list_->setFont(font);
 
@@ -117,8 +198,6 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
 
     connect(type_, SIGNAL(currentIndexChanged(int)), this, SLOT(FillTargets()));
     connect(show_data, SIGNAL(clicked()), this, SLOT(FillOps()));
-
-    QHBoxLayout* btns_layout_ = new QHBoxLayout;
 
     QPushButton* del_btn = new QPushButton("Удалить");
     del_btn->setFixedWidth(120);
@@ -128,7 +207,7 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     edit_btn->setFixedWidth(120);
     btns_layout_->addWidget(edit_btn);
 
-    layout_->addLayout(btns_layout_);
+    layout_->addLayout(info_layout);
 
     connect(del_btn, SIGNAL(clicked()), SLOT(Delete()));
     connect(edit_btn, SIGNAL(clicked()), SLOT(Edit()));
@@ -203,10 +282,23 @@ void TransactionEditor::FillOps() {
 
     auto ops = wallet_.GetTransactFiltred(from, to, type, acc, cat);
 
+    Money inc, dec;
+
     for (auto& op : ops) {
+        if (op->Type() == TransactionType::Income) {
+            inc += op->Sum();
+        } else if (op->Type() == TransactionType::Expense) {
+            dec += op->Sum();
+        }
         list_->addItem(FormatOperation(wallet_, op) /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
         trns_idxs_.push_back(op->Index());
     }
+
+    const size_t LENGTH = 19;
+
+    inc_data_->setText(MakeLength(inc.StringAbs(), LENGTH));
+    dec_data_->setText(MakeLength(dec.StringAbs(), LENGTH));
+    tot_data_->setText(MakeLength((inc - dec).StringAbs(), LENGTH));
 }
 
 void TransactionEditor::Edit() {
@@ -216,7 +308,7 @@ void TransactionEditor::Edit() {
         return;
     }
 
-    const Transaction_DEL* op = wallet_.FindTransact(trns_idxs_.at(idx));
+    const Transaction* op = wallet_.FindTransact(trns_idxs_.at(idx));
 
     ModalEditor* me = new ModalEditor(op, wallet_);
 

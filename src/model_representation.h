@@ -28,8 +28,7 @@ struct AccountsData {
 struct CategoryRepresentation {
     quint64 id;
     QString name;
-    bool inc;
-    bool dec;
+    quint8 inc_dec;
     quint64 parent_id;
     bool deleted;
 };
@@ -52,6 +51,7 @@ struct TransactionRepresentation {
     quint64 to_id;
     qint64 sum;
     QDate date;
+    QString description;
 };
 
 struct TransactionsPart {

@@ -23,6 +23,7 @@ HEADERS += \
            src/add_inc_dec.h \
            src/add_transfer_window.h \
            src/binary_loader.h \
+           src/category_editor.h \
            src/cell_w.h \
            src/domain.h \
            src/first_w.h \
@@ -41,6 +42,7 @@ SOURCES += \
            src/add_inc_dec.cpp \
            src/add_transfer_window.cpp \
            src/binary_loader.cpp \
+           src/category_editor.cpp \
            src/cell_w.cpp \
            src/domain.cpp \
            src/first_w.cpp \

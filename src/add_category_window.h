@@ -20,11 +20,12 @@ signals:
 public slots:
     void submit();
     void Edit();
+    void Update();
 private:
     void FillData(int n = 0);
 
     void showEvent(QShowEvent *event) override;
-    void FillCategories(int n = 0);
+    void FillCategories(size_t n = 0);
 
     std::optional<QVector<CategoryInfo>> cats_;
 

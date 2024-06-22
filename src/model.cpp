@@ -9,14 +9,14 @@ public:
     TransactionFilter(size_t from_id, size_t to_id, std::set<size_t>&& childs) : from_{from_id}, to_{to_id}, childs_(std::move(childs)) {
 
     }
-    bool operator()(const Transaction_DEL* trns) {
+    bool operator()(const Transaction* trns) {
         return !(CheckAcc(trns) && CheckCat(trns));
     }
 private:
-    bool CheckAcc(const Transaction_DEL* trns) {
+    bool CheckAcc(const Transaction* trns) {
         return from_ == 0 || from_ == trns->AccountFromIdx();
     }
-    bool CheckCat(const Transaction_DEL* trns) {
+    bool CheckCat(const Transaction* trns) {
         return to_ == 0 || to_ == trns->ToIdx() || childs_.count(trns->ToIdx()) > 0;
     }
 
@@ -139,6 +139,60 @@ std::set<size_t> Wallet::GetCategoryChilds(size_t cat_id) const {
     return res;
 }
 
+const Category *Wallet::GetCategory(size_t cat_id) const {
+    return cats_index_.at(cat_id);
+}
+
+std::pair<bool, bool> Wallet::GetCategoryChildsType(size_t cat_id) const {
+    bool is_inc = false, is_dec = false;
+
+    CategoryType inc = CategoryType::Inc;
+    CategoryType dec = CategoryType::Dec;
+    CategoryType bth = CategoryType::Both;
+
+    for (size_t child : cats_index_.at(cat_id)->GetChilds()) {
+        Category* cur_cat = cats_index_.at(child);
+        CategoryType cur = cur_cat->GetType();
+        if (cur == bth) {
+            return {1, 1};
+        } else if (!is_inc && cur == inc) {
+            is_inc = true;
+            if (is_dec) {
+                return {1, 1};
+            }
+        } else if (!is_dec && cur == dec) {
+            is_dec = true;
+            if (is_inc) {
+                return {1, 1};
+            }
+        }
+    }
+
+    return {is_inc, is_dec};
+}
+
+void Wallet::EditCategory(size_t idx, QString new_name, size_t new_parent, bool inc, bool dec) {
+    Category* cat_ptr = cats_index_.at(idx);
+    size_t old_parent_id = cat_ptr->GetParentId();
+    Category* old_parent_ptr = cats_index_.at(old_parent_id);
+    Category* new_parent_ptr = cats_index_.at(new_parent);
+
+    cat_ptr->EditCategory(new_name, new_parent_ptr, inc, dec);
+
+    if (old_parent_id != new_parent) {
+        old_parent_ptr->DeleteChild(idx);
+        new_parent_ptr->AddChild(*cat_ptr);
+    }
+
+    // if (new_parent_ptr && inc) {
+    //     new_parent_ptr->SetInc();
+    // }
+
+    // if (new_parent_ptr && dec) {
+    //     new_parent_ptr->SetDec();
+    // }
+}
+
 void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
     transacts_.AddTransaction(transact);
 
@@ -165,23 +219,23 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact, siz
 
 }
 
-QVector<const Transaction_DEL*> Wallet::GetTransacts(TransactShowType type, size_t number, bool late_to_early) const {
+QVector<const Transaction*> Wallet::GetTransacts(TransactShowType type, size_t number, bool late_to_early) const {
     return transacts_.GetTransacts(type, number, late_to_early);
 }
 
-QVector<const Transaction_DEL*> Wallet::GetIncomes(size_t number, bool late_to_early) const {
+QVector<const Transaction*> Wallet::GetIncomes(size_t number, bool late_to_early) const {
     return transacts_.GetTransacts(TransactShowType::Income, number, late_to_early);
 }
 
-QVector<const Transaction_DEL*> Wallet::GetExpenses(size_t number, bool late_to_early) const {
+QVector<const Transaction*> Wallet::GetExpenses(size_t number, bool late_to_early) const {
     return transacts_.GetTransacts(TransactShowType::Expense, number, late_to_early);
 }
 
-QVector<const Transaction_DEL*> Wallet::GetTransfers(size_t number, bool late_to_early) const {
+QVector<const Transaction*> Wallet::GetTransfers(size_t number, bool late_to_early) const {
     return transacts_.GetTransacts(TransactShowType::Transfer, number, late_to_early);
 }
 
-QVector<const Transaction_DEL*> Wallet::GetIncDecTransacts(bool arrive, size_t number, bool late_to_early) const {
+QVector<const Transaction*> Wallet::GetIncDecTransacts(bool arrive, size_t number, bool late_to_early) const {
     if (arrive) {
         return transacts_.GetTransacts(TransactShowType::Income, number, late_to_early);
     } else {
@@ -189,7 +243,7 @@ QVector<const Transaction_DEL*> Wallet::GetIncDecTransacts(bool arrive, size_t n
     }
 }
 
-QVector<const Transaction_DEL*> Wallet::GetTransactFiltred
+QVector<const Transaction*> Wallet::GetTransactFiltred
 (QDate from, QDate to, TransactShowType type, size_t acc_id, size_t cat_id) const {
     auto trs = transacts_.GetTransactFiltred(from, to, type);
 
@@ -259,7 +313,7 @@ void Wallet::DeleteTransaction(size_t idx) {
     transacts_.DeleteTransact(idx);
 }
 
-const Transaction_DEL* Wallet::FindTransact(size_t idx) {
+const Transaction* Wallet::FindTransact(size_t idx) {
     return transacts_.FindTransact(idx);
 }
 
@@ -351,6 +405,7 @@ void Wallet::AddCatAndChilds(size_t index, QVector<CategoryInfo>& result, int in
     info.idx = index;
     info.name = cat.GetName();
     info.indent = indent;
+    info.type_ = cat.GetType();
 
     result.push_back(std::move(info));
 
