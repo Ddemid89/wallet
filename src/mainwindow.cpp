@@ -5,6 +5,7 @@
 #include <QToolBar>
 #include <map>
 #include <QCloseEvent>
+#include <QMessageBox>
 
 void MainWindow::SetFirstWidget(QWidget* widget) {
     widgets_->addWidget(widget);
@@ -19,21 +20,6 @@ void MainWindow::SetAddAccountWidget(Widgets* widget) {
 void MainWindow::SetAddCategoryWidget(Widgets* widget) {
     widgets_->addWidget(widget);
     widgets_index_[WidgetType::AddCategory] = widgets_->count() - 1;
-}
-
-void MainWindow::SetAddIncomeWidget(Widgets* widget) {
-    widgets_->addWidget(widget);
-    widgets_index_[WidgetType::AddIncome] = widgets_->count() - 1;
-}
-
-void MainWindow::SetAddExpenseWidget(Widgets* widget) {
-    widgets_->addWidget(widget);
-    widgets_index_[WidgetType::AddExpens] = widgets_->count() - 1;
-}
-
-void MainWindow::SetAddTransferWidget(Widgets* widget) {
-    widgets_->addWidget(widget);
-    widgets_index_[WidgetType::AddTransfer] = widgets_->count() - 1;
 }
 
 void MainWindow::SetEditTransactsWidget(Widgets* widget) {
@@ -63,28 +49,19 @@ MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
     sbar_->showMessage("Здесь можно выводить какую-то информацию", 60000);
 
     QMenu* m1 = new QMenu("Здесь");
-    QMenu* m2 = new QMenu("Счета");
-    m2->addAction("Добавить", this, [this](){
+    QMenu* m2 = new QMenu("Счета и категории");
+    m2->addAction("Управлять счетами", this, [this](){
         emit(this->change_window(WidgetType::AddAccount));
     });
-
-    QMenu* m3 = new QMenu("Категории");
-    m3->addAction("Добавить", this, [this]{
+    m2->addAction("Управлять категориями", this, [this]{
         emit(this->change_window(WidgetType::AddCategory));
     });
-    m3->addAction("Редактировать");
 
     QMenu* m4 = new QMenu("Транзакции");
-    m4->addAction("Добавить доходы", this, [this]{
-        emit(this->change_window(WidgetType::AddIncome));
-    });
-    m4->addAction("Добавить расходы", this, [this]{
-        emit(this->change_window(WidgetType::AddExpens));
-    });
-    m4->addAction("Добавить расходы/доходы/переводы", this, [this]{
+    m4->addAction("Добавить транзакции", this, [this]{
         emit(this->change_window(WidgetType::CellIncDec));
     });
-    m4->addAction("Редактировать", this, [this]{
+    m4->addAction("Смотреть транзакции", this, [this]{
         emit(this->change_window(WidgetType::EditTransacts));
     });
 
@@ -121,7 +98,6 @@ MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
 
     //mbar_->addMenu(m1);
     mbar_->addMenu(m2);
-    mbar_->addMenu(m3);
     mbar_->addMenu(m4);
     mbar_->addMenu(m5);
 
@@ -134,7 +110,6 @@ MainWindow::MainWindow(Wallet& wallet, QWidget* parent) : QMainWindow(parent)
     widgets_ = new QStackedWidget;
 
     setCentralWidget(widgets_);
-    //widgets_->setCurrentIndex(0);
 }
 
 MainWindow::~MainWindow() {
@@ -144,8 +119,29 @@ MainWindow::~MainWindow() {
 void MainWindow::change_window(WidgetType type) {
     size_t idx = widgets_index_.at(type);
 
+    static bool ask_accs = false;
+    static bool ask_cats = false;
+
     if (static_cast<int>(idx) == widgets_->currentIndex()) {
         return;
+    }
+
+    QMessageBox::StandardButton reply = QMessageBox::No;
+
+    if (!ask_accs && wallet_.GetAccounts().empty() && type != WidgetType::AddAccount) {
+        ask_accs = true;
+        reply = QMessageBox::question(this, "Нет ни одного счета", "Нет ни одного счета. Хотите добавить?", QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            idx = widgets_index_.at(WidgetType::AddAccount);
+        }
+    }
+
+    if (!ask_cats && wallet_.GetCategoryChilds(0).empty() && type != WidgetType::AddCategory && reply == QMessageBox::No && type != WidgetType::AddAccount) {
+        ask_cats = true;
+        reply = QMessageBox::question(this, "Нет ни одной категории", "Нет ни одной категории. Хотите добавить?", QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) {
+            idx = widgets_index_.at(WidgetType::AddCategory);
+        }
     }
 
     auto cur_widget = qobject_cast<Widgets*>(widgets_->currentWidget());

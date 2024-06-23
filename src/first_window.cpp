@@ -4,6 +4,8 @@
 #include <QVBoxLayout>
 #include "model.h"
 #include <QSpacerItem>
+#include <QMessageBox>
+#include <QShowEvent>
 
 namespace detail {
 QLabel* GetLabel(const QString& txt, double r = 0, bool bold = false) {
@@ -37,15 +39,13 @@ FirstWindow::FirstWindow(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                         , m_window_(m_window){
 
     main_layout_ = new QVBoxLayout;
+    setLayout(main_layout_);
+    main_layout_->setSpacing(5);
+    main_layout_->setAlignment(Qt::AlignTop);
 }
 
 void FirstWindow::FillData() {
-    delete main_layout_;
-    main_layout_ = new QVBoxLayout;
-    main_layout_->setSpacing(5);
-    setLayout(main_layout_);
     FillAccs();
-    main_layout_->setAlignment(Qt::AlignTop);
 }
 
 void FirstWindow::FillAccs() {
@@ -61,6 +61,6 @@ void FirstWindow::FillAccs() {
     }
 }
 
-void FirstWindow::showEvent(QShowEvent*) {
+void FirstWindow::showEvent(QShowEvent* event) {
     FillData();
 }

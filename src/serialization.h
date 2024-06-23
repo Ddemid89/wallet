@@ -5,7 +5,6 @@
 #include <QFile>
 #include <QDataStream>
 #include <QVector>
-#include <bits/timesize.h>
 
 QDataStream& operator<<(QDataStream& out, const model_representation::AccountRepresentation&);
 QDataStream& operator>>(QDataStream& in, model_representation::AccountRepresentation&);
@@ -22,7 +21,7 @@ namespace model_serialization {
 void SerializeAccounts(const QString& file, model_representation::AccountsData&& accs);
 model_representation::AccountsData DeserializeAccounts(const QString& file);
 
-void SerializeCategories(const QString& file, model_representation::CategoriesData&& accs);
+void SerializeCategories(const QString& file, model_representation::CategoriesData&& cats);
 model_representation::CategoriesData DeserializeCategories(const QString& file);
 
 } // namespace model_serialization

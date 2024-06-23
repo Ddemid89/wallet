@@ -12,9 +12,6 @@ enum class WidgetType {
     First,
     AddAccount,
     AddCategory,
-    AddIncome,
-    AddExpens,
-    AddTransfer,
     EditTransacts,
     CellIncDec
 };
@@ -27,9 +24,6 @@ public:
     void SetFirstWidget(QWidget* widget);
     void SetAddAccountWidget(Widgets* widget);
     void SetAddCategoryWidget(Widgets* widget);
-    void SetAddIncomeWidget(Widgets* widget);
-    void SetAddExpenseWidget(Widgets* widget);
-    void SetAddTransferWidget(Widgets* widget);
     void SetEditTransactsWidget(Widgets* widget);
     void SetEditAccountsWidget(Widgets* widget);
     void SetCellIncDecWidget(Widgets* widget);

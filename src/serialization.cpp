@@ -45,7 +45,7 @@ QDataStream& operator>>(QDataStream& in, model_representation::AccountsData& acc
 
 model_representation::AccountsData model_serialization::DeserializeAccounts(const QString& file) {
     model_representation::AccountsData accs;
-    QFile acc_file(file);
+    QFile acc_file(file + ".bin");
     if(!acc_file.open(QIODevice::ReadOnly)) {
         qDebug() << "Failed to open file '" + file + "'";
         accs.id = 1;
@@ -61,7 +61,7 @@ model_representation::AccountsData model_serialization::DeserializeAccounts(cons
 }
 
 void model_serialization::SerializeAccounts(const QString& file, model_representation::AccountsData&& accs) {
-    QFile acc_file(file);
+    QFile acc_file(file + ".bin");
     if(!acc_file.open(QIODevice::WriteOnly)) {
         qDebug() << "Failed to open file '" + file + "'";
         return;
@@ -102,7 +102,7 @@ QDataStream& operator>>(QDataStream& in, model_representation::CategoriesData& c
 }
 
 void model_serialization::SerializeCategories(const QString& file, model_representation::CategoriesData&& cats) {
-    QFile cat_file(file);
+    QFile cat_file(file + ".bin");
     if(!cat_file.open(QIODevice::WriteOnly)) {
         qDebug() << "Failed to open file '" + file + "'";
         return;
@@ -116,7 +116,7 @@ void model_serialization::SerializeCategories(const QString& file, model_represe
 
 model_representation::CategoriesData model_serialization::DeserializeCategories(const QString& file) {
     model_representation::CategoriesData cats;
-    QFile cat_file(file);
+    QFile cat_file(file + ".bin");
     if(!cat_file.open(QIODevice::ReadOnly)) {
         qDebug() << "Failed to open file '" + file + "'";
         cats.id = 1;

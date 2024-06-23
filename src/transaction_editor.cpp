@@ -298,7 +298,7 @@ void TransactionEditor::FillOps() {
 
     inc_data_->setText(MakeLength(inc.StringAbs(), LENGTH));
     dec_data_->setText(MakeLength(dec.StringAbs(), LENGTH));
-    tot_data_->setText(MakeLength((inc - dec).StringAbs(), LENGTH));
+    tot_data_->setText(MakeLength((inc - dec).String(), LENGTH));
 }
 
 void TransactionEditor::Edit() {

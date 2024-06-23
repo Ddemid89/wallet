@@ -23,7 +23,9 @@ private:
 
     QVector<AccountWidget*> acc_widgets_;
 
-    void showEvent(QShowEvent *event) override;
+    void showEvent(QShowEvent* event) override;
+
+
     Wallet& wallet_;
     MainWindow& m_window_;
 
