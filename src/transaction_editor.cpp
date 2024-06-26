@@ -45,16 +45,19 @@ QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
 
     res += QString(sum_end - res.size() - sum_str.size(), '-');
 
-    if (trns_ptr->Type() == TransactionType::Income) {
-        res += "(";
-    } else if (trns_ptr->Type() == TransactionType::Expense) {
-        res += "(";
-    } else {
+    if (trns_ptr->Type() == TransactionType::Transfer) {
         res += "[";
+    } else {
+        res += "(";
     }
 
+    res += sum_str + " руб.";
 
-    res += sum_str + " руб.)";
+    if (trns_ptr->Type() == TransactionType::Transfer) {
+        res += "]";
+    } else {
+        res += ")";
+    }
 
     res += QString(arrow_tail - 1, '-');
 
@@ -194,8 +197,6 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     connect(date_to_, &QDateEdit::dateChanged, [this]{
         date_from_->setMaximumDate(date_to_->date());
     });
-
-
 
     list_->setFont(font);
 

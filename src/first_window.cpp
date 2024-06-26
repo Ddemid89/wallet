@@ -61,6 +61,6 @@ void FirstWindow::FillAccs() {
     }
 }
 
-void FirstWindow::showEvent(QShowEvent* event) {
+void FirstWindow::showEvent(QShowEvent*) {
     FillData();
 }

@@ -198,6 +198,13 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
 
     auto& acc = *accs_index_.at(transact.from_idx);
 
+    if (transact.type == TransactionType::Transfer) {
+        auto& acc_to = *accs_index_.at(transact.to_idx);
+        acc    -= transact.sum;
+        acc_to += transact.sum;
+        return;
+    }
+
     if ((transact.type == TransactionType::Income && transact.sum.Kopek() > 0) || (transact.type == TransactionType::Expense && transact.sum.Kopek() < 0)) {
         acc += transact.sum;
     } else {
@@ -210,6 +217,13 @@ void Wallet::AddTransaction(transactions_manager::TransactionAdder transact, siz
     transacts_.AddTransaction(transact, idx);
 
     auto& acc = *accs_index_.at(transact.from_idx);
+
+    if (transact.type == TransactionType::Transfer) {
+        auto& acc_to = *accs_index_.at(transact.to_idx);
+        acc    -= transact.sum;
+        acc_to += transact.sum;
+        return;
+    }
 
     if ((transact.type == TransactionType::Income && transact.sum.Kopek() > 0) || (transact.type == TransactionType::Expense && transact.sum.Kopek() < 0)) {
         acc += transact.sum;
