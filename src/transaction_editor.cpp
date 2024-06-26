@@ -7,8 +7,14 @@
 
 #ifdef Q_OS_WINDOWS
     const auto MONOSPACE_FONT = "Courier";
+    const int WIDTH = 108;
+    const int LAB_WIDTH = 250;
+    const int END_WIDTH = 259;
 #else
     const auto MONOSPACE_FONT = "Monospace";
+    const int WIDTH = 97;
+    const int LAB_WIDTH = 278;
+    const int END_WIDTH = 200;
 #endif
 
 namespace  {
@@ -21,7 +27,6 @@ QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
     const int arrow_length = 23;
     const int arrow_tail   = 6;
     const int second_h_line_indent = 6;
-    const int width  = 97;
 
     const int arrow_start  = first_h_line + arrow_indent;
     const int sum_end      = arrow_start + arrow_length - arrow_tail;
@@ -73,7 +78,7 @@ QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
         to = wallet.GetAccName(trns_ptr->ToIdx());
     }
 
-    res += QString(width - res.size() - to.size(), ' ');
+    res += QString(WIDTH - res.size() - to.size(), ' ');
 
     res += to;
 
@@ -147,13 +152,13 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     QLabel* dec_end = new QLabel("|");
     QLabel* tot_end = new QLabel("|");
 
-    inc_label->setFixedWidth(278);
-    dec_label->setFixedWidth(278);
-    tot_label->setFixedWidth(278);
+    inc_label->setFixedWidth(LAB_WIDTH);
+    dec_label->setFixedWidth(LAB_WIDTH);
+    tot_label->setFixedWidth(LAB_WIDTH);
 
-    inc_end->setFixedWidth(200);
-    dec_end->setFixedWidth(200);
-    tot_end->setFixedWidth(200);
+    inc_end->setFixedWidth(END_WIDTH);
+    dec_end->setFixedWidth(END_WIDTH);
+    tot_end->setFixedWidth(END_WIDTH);
 
     inc_info->addWidget(inc_label);
     dec_info->addWidget(dec_label);

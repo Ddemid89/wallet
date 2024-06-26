@@ -475,6 +475,7 @@ void LabelRow::SetTransaction(const Transaction *trns, const NamesIndex& acc_nam
     } else {
         desc_->setAlignment(Qt::AlignCenter);
         desc_->setText("-");
+        desc_->setToolTip("Описание отсутствует");
     }
 
     QPalette pl;
