@@ -172,7 +172,7 @@ void CellWindow::FillRecent() {
     size_t offset = scroll_->value();
 
     for (int i = 0; i < qMin(RECENT_LINES, recent_ops_.size()); ++i) {
-        QColor color = (i + offset) % 10 != 0 ? Qt::black : QColor(0, 110, 110);
+        QColor color = (i + offset) % 10 != 0 ? QColor(251, 251, 251) : QColor(240, 240, 240);
         FillRecentLine(i, recent_ops_.at(i + offset), color);
     }
 }
@@ -428,6 +428,13 @@ LabelRow::LabelRow(QWidget* parent) : QWidget{parent} {
     to_   = GetLabel("-", 0,   false, 1);
     desc_ = GetLabel("-", DESC_W,  false, 1);
 
+    date_->setAutoFillBackground(true);
+    op_->setAutoFillBackground(true);
+    sum_->setAutoFillBackground(true);
+    from_->setAutoFillBackground(true);
+    to_->setAutoFillBackground(true);
+    desc_->setAutoFillBackground(true);
+
     date_->setAlignment(Qt::AlignLeft);
     op_->setAlignment(Qt::AlignLeft);
     sum_->setAlignment(Qt::AlignLeft);
@@ -479,7 +486,7 @@ void LabelRow::SetTransaction(const Transaction *trns, const NamesIndex& acc_nam
     }
 
     QPalette pl;
-    pl.setColor(QPalette::WindowText, color);
+    pl.setColor(QPalette::Window, color);
 
     date_->setPalette(pl);
     sum_->setPalette(pl);
@@ -487,6 +494,29 @@ void LabelRow::SetTransaction(const Transaction *trns, const NamesIndex& acc_nam
     to_->setPalette(pl);
     op_->setPalette(pl);
     desc_->setPalette(pl);
+}
+
+ModalDescriptionEditor::ModalDescriptionEditor(Row &row, QWidget *parent) : QWidget{parent}, row_{row} {
+    QVBoxLayout* v_lyt = new QVBoxLayout;
+    QHBoxLayout* h_lyt = new QHBoxLayout;
+
+    setWindowModality(Qt::ApplicationModal);
+    setWindowOpacity(0.9);
+    setWindowFlag(Qt::Dialog);
+    setFixedSize(330, 80);
+    setWindowTitle("Добавить описание");
+
+    h_lyt->addWidget(new QLabel("Описание:"));
+    h_lyt->addWidget(new_desc_);
+    v_lyt->addLayout(h_lyt);
+
+    QPushButton* done = new QPushButton("Готово");
+    v_lyt->addWidget(done);
+    connect(done, &QPushButton::clicked, this, &ModalDescriptionEditor::Done);
+
+    new_desc_->setText(row_.GetDescription());
+
+    setLayout(v_lyt);
 }
 
 void ModalDescriptionEditor::Done() {

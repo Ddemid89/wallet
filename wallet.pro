@@ -30,6 +30,7 @@ HEADERS += src/json_loader.h \
            src/mainwindow.h \
            src/model.h \
            src/model_representation.h \
+           src/my_list.h \
            src/serialization.h \
            src/transaction_editor.h \
            src/transactions_manager.h
@@ -49,6 +50,7 @@ SOURCES += src/json_loader.cpp \
            src/mainwindow.cpp \
            src/model.cpp \
            src/model_representation.cpp \
+           src/my_list.cpp \
            src/serialization.cpp \
            src/transaction_editor.cpp \
            src/transactions_manager.cpp

@@ -88,28 +88,7 @@ private:
 class ModalDescriptionEditor : public QWidget {
     Q_OBJECT
 public:
-    ModalDescriptionEditor (Row& row, QWidget* parent = nullptr) : QWidget{parent}, row_{row} {
-        QVBoxLayout* v_lyt = new QVBoxLayout;
-        QHBoxLayout* h_lyt = new QHBoxLayout;
-
-        setWindowModality(Qt::ApplicationModal);
-        setWindowOpacity(0.9);
-        setWindowFlag(Qt::Dialog);
-        setFixedSize(330, 80);
-        setWindowTitle("Добавить описание");
-
-        h_lyt->addWidget(new QLabel("Описание:"));
-        h_lyt->addWidget(new_desc_);
-        v_lyt->addLayout(h_lyt);
-
-        QPushButton* done = new QPushButton("Готово");
-        v_lyt->addWidget(done);
-        connect(done, &QPushButton::clicked, this, &ModalDescriptionEditor::Done);
-
-        new_desc_->setText(row_.GetDescription());
-
-        setLayout(v_lyt);
-    }
+    ModalDescriptionEditor (Row& row, QWidget* parent = nullptr);
 private slots:
     void Done();
     void closeEvent(QCloseEvent*) override;

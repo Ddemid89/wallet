@@ -6,93 +6,14 @@
 #include <QListWidget>
 
 #ifdef Q_OS_WINDOWS
-    const auto MONOSPACE_FONT = "Courier";
     const int WIDTH = 108;
     const int LAB_WIDTH = 250;
     const int END_WIDTH = 259;
 #else
-    const auto MONOSPACE_FONT = "Monospace";
     const int WIDTH = 97;
     const int LAB_WIDTH = 278;
     const int END_WIDTH = 200;
 #endif
-
-namespace  {
-QString FormatOperation(Wallet& wallet, const Transaction* trns_ptr) {
-    QString res = trns_ptr->Date().toString("dd.MM.yy")
-                  + "  |  " + wallet.GetAccName(trns_ptr->AccountFromIdx());
-
-    const int first_h_line = 34;
-    const int arrow_indent = 3;
-    const int arrow_length = 23;
-    const int arrow_tail   = 6;
-    const int second_h_line_indent = 6;
-
-    const int arrow_start  = first_h_line + arrow_indent;
-    const int sum_end      = arrow_start + arrow_length - arrow_tail;
-
-    res += QString(first_h_line - res.size(), ' ');
-
-    res += "|" + QString(arrow_indent, ' ');
-
-    if (trns_ptr->Type() == TransactionType::Income) {
-        res += " <";
-    } else {
-        res += " -";
-    }
-
-    QString sum_str = trns_ptr->Sum().StringAbs();
-
-    res += QString(sum_end - res.size() - sum_str.size(), '-');
-
-    if (trns_ptr->Type() == TransactionType::Transfer) {
-        res += "[";
-    } else {
-        res += "(";
-    }
-
-    res += sum_str + " руб.";
-
-    if (trns_ptr->Type() == TransactionType::Transfer) {
-        res += "]";
-    } else {
-        res += ")";
-    }
-
-    res += QString(arrow_tail - 1, '-');
-
-    if (trns_ptr->Type() == TransactionType::Income) {
-        res += "- ";
-    } else if (trns_ptr->Type() == TransactionType::Expense) {
-        res += "> ";
-    } else {
-        res += "> ";
-    }
-
-    res += QString(second_h_line_indent, ' ') + "|";
-
-    QString to;
-
-    if (trns_ptr->Type() == TransactionType::Income) {
-        to = wallet.GetCatName(trns_ptr->ToIdx());
-    } else if (trns_ptr->Type() == TransactionType::Expense) {
-        to = wallet.GetCatName(trns_ptr->ToIdx());
-    } else {
-        to = wallet.GetAccName(trns_ptr->ToIdx());
-    }
-
-    res += QString(WIDTH - res.size() - to.size(), ' ');
-
-    res += to;
-
-    return res;
-}
-
-QString MakeLength(QString txt, size_t len) {
-    return QString(len - txt.size(), ' ') + txt;
-}
-
-}
 
 TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidget* parent)
                                             : Widgets(wallet, m_window, parent) {
@@ -136,60 +57,7 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
 
     setLayout(layout_);
 
-    QVBoxLayout* info_layout = new QVBoxLayout;
-    QHBoxLayout* inc_info    = new QHBoxLayout;
-    QHBoxLayout* dec_info    = new QHBoxLayout;
-    QHBoxLayout* tot_info    = new QHBoxLayout;
-
     QFont font(MONOSPACE_FONT);
-
-    info_layout->addLayout(inc_info);
-    info_layout->addLayout(dec_info);
-    info_layout->addLayout(tot_info);
-
-    QLabel* inc_label = new QLabel("Итого доходов: |");
-    QLabel* dec_label = new QLabel("Итого расходов: |");
-    QLabel* tot_label = new QLabel("Итого: |");
-
-    QLabel* inc_end = new QLabel("|");
-    QLabel* dec_end = new QLabel("|");
-    QLabel* tot_end = new QLabel("|");
-
-    inc_label->setFixedWidth(LAB_WIDTH);
-    dec_label->setFixedWidth(LAB_WIDTH);
-    tot_label->setFixedWidth(LAB_WIDTH);
-
-    inc_end->setFixedWidth(END_WIDTH);
-    dec_end->setFixedWidth(END_WIDTH);
-    tot_end->setFixedWidth(END_WIDTH);
-
-    inc_info->addWidget(inc_label);
-    dec_info->addWidget(dec_label);
-    tot_info->addWidget(tot_label);
-
-    inc_info->addWidget(inc_data_);
-    dec_info->addWidget(dec_data_);
-    tot_info->addWidget(tot_data_);
-
-    inc_info->addWidget(inc_end);
-    dec_info->addWidget(dec_end);
-    tot_info->addWidget(tot_end);
-
-    inc_label->setFont(font);
-    dec_label->setFont(font);
-    tot_label->setFont(font);
-
-    inc_end->setFont(font);
-    dec_end->setFont(font);
-    tot_end->setFont(font);
-
-    inc_data_->setFont(font);
-    dec_data_->setFont(font);
-    tot_data_->setFont(font);
-
-    inc_label->setAlignment(Qt::AlignRight);
-    dec_label->setAlignment(Qt::AlignRight);
-    tot_label->setAlignment(Qt::AlignRight);
 
     connect(date_from_, &QDateEdit::dateChanged, [this]{
         date_to_->setMinimumDate(date_from_->date());
@@ -200,7 +68,7 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
 
     list_->setFont(font);
 
-    connect(list_, &QListWidget::itemDoubleClicked, this, &TransactionEditor::Edit);
+    connect(list_, &MyList::itemDoubleClicked, this, &TransactionEditor::Edit);
 
     connect(type_, SIGNAL(currentIndexChanged(int)), this, SLOT(FillTargets()));
     connect(show_data, SIGNAL(clicked()), this, SLOT(FillOps()));
@@ -213,12 +81,8 @@ TransactionEditor::TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidg
     edit_btn->setFixedWidth(120);
     btns_layout_->addWidget(edit_btn);
 
-    layout_->addLayout(info_layout);
-
     connect(del_btn, SIGNAL(clicked()), SLOT(Delete()));
     connect(edit_btn, SIGNAL(clicked()), SLOT(Edit()));
-
-    FillData();
 }
 
 void TransactionEditor::FillData() {
@@ -296,15 +160,25 @@ void TransactionEditor::FillOps() {
         } else if (op->Type() == TransactionType::Expense) {
             dec += op->Sum();
         }
-        list_->addItem(FormatOperation(wallet_, op) /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
+        //list_->addItem(FormatOperation(wallet_, op) /*+ " (id: " + QString::number(op->Index()) + ")"*/ );
+        bool transfer = op->Type() == TransactionType::Transfer;
+        QString to;
+
+        if (transfer) {
+            to = wallet_.GetAccName(op->ToIdx());
+        } else {
+            to = wallet_.GetCategory(op->ToIdx())->GetName();
+        }
+
+        list_->addItem(op->Date(),
+                       wallet_.GetAccName(op->AccountFromIdx()),
+                       op->Sum().StringAbs(), to, transfer, op->Type() == TransactionType::Income
+        );
+
         trns_idxs_.push_back(op->Index());
     }
 
-    const size_t LENGTH = 19;
-
-    inc_data_->setText(MakeLength(inc.StringAbs(), LENGTH));
-    dec_data_->setText(MakeLength(dec.StringAbs(), LENGTH));
-    tot_data_->setText(MakeLength((inc - dec).String(), LENGTH));
+    list_->SetSums(inc.StringAbs(), dec.StringAbs(), (inc - dec).String());
 }
 
 void TransactionEditor::Edit() {
@@ -355,4 +229,171 @@ const QVector<CategoryInfo> TransactionEditor::GetCats() const {
 
 void TransactionEditor::showEvent(QShowEvent*) {
     FillData();
+}
+
+ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *parent) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
+    QFormLayout* layout_ = new QFormLayout;
+
+    layout_->addRow("Дата:",  date_);
+    layout_->addRow("Сумма:", sum_);
+    layout_->addRow(acc_lab_,  acc_);
+    layout_->addRow(cat_lab_,  cat_);
+    layout_->addRow("Описание:", desc_);
+
+    sum_->setMinimum(0.01);
+    sum_->setMaximum(1000000);
+    sum_->setSuffix(" руб.");
+
+    sum_->setValue(trns->Sum().Double());
+
+    date_->setDate(trns->Date());
+    date_->setMaximumDate(QDate::currentDate());
+
+    desc_->setText(trns->GetDescription());
+
+    if (type_ == TransactionType::Transfer) {
+        acc_lab_->setText("Откуда:");
+        cat_lab_->setText("Куда:");
+        setWindowTitle("Редактировать перевод");
+        FillAccs(acc_, trns_->AccountFromIdx());
+        FillAccs(cat_, trns_->ToIdx());
+        if (acc_->count() < 2 || cat_->count() < 2) {
+            acc_->setEnabled(false);
+            cat_lab_->setEnabled(false);
+        }
+        connect(acc_, &QComboBox::currentIndexChanged, this, &ModalEditor::AccChanged);
+        connect(cat_, &QComboBox::currentIndexChanged, this, &ModalEditor::CatChanged);
+    } else {
+        acc_lab_->setText("Счет:");
+        cat_lab_->setText("Категория:");
+        FillAccs(acc_, trns_->AccountFromIdx());
+        FillCats(type_ == TransactionType::Income, trns_->ToIdx());
+        setWindowTitle(type_ == TransactionType::Income ? "Редактировать доход" : "Редактировать расход");
+    }
+
+    QPushButton* done_ = new QPushButton("Готово");
+
+    layout_->addRow("", done_);
+
+    connect(done_, SIGNAL(clicked()), SLOT(ButtonPressed()));
+
+    setLayout(layout_);
+    setWindowModality(Qt::ApplicationModal);
+    setWindowOpacity(0.9);
+    setWindowFlag(Qt::Dialog);
+    setFixedSize(300, 180);
+
+}
+
+void ModalEditor::closeEvent(QCloseEvent *event) {
+    if (!NoChanges()) {
+        QMessageBox::StandardButton reply = QMessageBox::question(this, "Выберите действие", "Сохранить изменения?",
+                                                                  QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
+        if (reply == QMessageBox::Yes) {
+            Submit();
+            emit Updated();
+        } else if (reply == QMessageBox::Cancel) {
+            event->ignore();
+            return;
+        }
+
+    }
+
+    delete this;
+}
+
+void ModalEditor::AccChanged() {
+    if (cat_->currentIndex() == acc_->currentIndex()) {
+        if (acc_->currentIndex() == 0) {
+            cat_->setCurrentIndex(1);
+        } else {
+            cat_->setCurrentIndex(0);
+        }
+    }
+}
+
+void ModalEditor::CatChanged() {
+    if (cat_->currentIndex() == acc_->currentIndex()) {
+        if (cat_->currentIndex() == 0) {
+            acc_->setCurrentIndex(1);
+        } else {
+            acc_->setCurrentIndex(0);
+        }
+    }
+}
+
+void ModalEditor::ButtonPressed() {
+    if (NoChanges()) {
+        close();
+        return;
+    }
+
+    Submit();
+    emit Updated();
+    delete this;
+}
+
+void ModalEditor::Submit() {
+    transactions_manager::TransactionAdder adder;
+    adder.from_idx    = acc_idx_.at(acc_->currentIndex());
+    adder.to_idx      = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
+    adder.date        = date_->date();
+    adder.sum         = sum_->value();
+    adder.type        = type_;
+    adder.description = desc_->text().trimmed();
+
+    wallet_.EditTransact(trns_->Index(), adder);
+}
+
+bool ModalEditor::NoChanges() {
+    size_t new_from = acc_idx_.at(acc_->currentIndex());
+    QDate  new_date = date_->date();
+    Money new_sum   = sum_->value();
+    size_t new_to   = cat_idx_.at(cat_->currentIndex());
+    QString new_desc = desc_->text().trimmed();
+
+    size_t old_from  = trns_->AccountFromIdx();
+    QDate  old_date  = trns_->Date();
+    Money old_sum    = trns_->Sum();
+    size_t old_to    = trns_->ToIdx();
+    QString old_desc = trns_->GetDescription();
+
+    return new_from == old_from && new_date == old_date && new_sum == old_sum && new_to == old_to && new_desc == old_desc;
+}
+
+void ModalEditor::FillAccs(QComboBox *cb, size_t idx) {
+    auto& accs = wallet_.GetAccounts();
+
+    cb->clear();
+
+    acc_idx_.clear();
+
+    for (auto& acc : accs) {
+        if (acc->IsDeleted()) {
+            cb->addItem(acc->GetName() + " (Удален)");
+        } else {
+            cb->addItem(acc->GetName());
+        }
+
+        acc_idx_.push_back(acc->GetIndex());
+
+        if (acc->GetIndex() == idx) {
+            cb->setCurrentIndex(cb->count() - 1);
+        }
+    }
+}
+
+void ModalEditor::FillCats(bool inc, size_t idx) {
+    auto cats = wallet_.GetCategories(inc);
+
+    cat_->clear();
+
+    for (auto& cat : cats) {
+        cat_->addItem(QString(cat.indent, ' ') + cat.name);
+        cat_idx_.push_back(cat.idx);
+        if (cat.idx == idx) {
+            cat_->setCurrentIndex(cat_->count() - 1);
+        }
+    }
 }

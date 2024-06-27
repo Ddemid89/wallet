@@ -13,179 +13,24 @@
 #include <QLineEdit>
 #include "mainwindow.h"
 #include "model.h"
+#include "my_list.h"
 
 class ModalEditor : public QWidget {
     Q_OBJECT
 public:
-    ModalEditor(const Transaction* trns, Wallet& wallet, QWidget* parent = nullptr) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
-        QFormLayout* layout_ = new QFormLayout;
-
-        layout_->addRow("Дата:",  date_);
-        layout_->addRow("Сумма:", sum_);
-        layout_->addRow(acc_lab_,  acc_);
-        layout_->addRow(cat_lab_,  cat_);
-        layout_->addRow("Описание:", desc_);
-
-        sum_->setMinimum(0.01);
-        sum_->setMaximum(1000000);
-        sum_->setSuffix(" руб.");
-
-        sum_->setValue(trns->Sum().Double());
-
-        date_->setDate(trns->Date());
-        date_->setMaximumDate(QDate::currentDate());
-
-        desc_->setText(trns->GetDescription());
-
-        if (type_ == TransactionType::Transfer) {
-            acc_lab_->setText("Откуда:");
-            cat_lab_->setText("Куда:");
-            setWindowTitle("Редактировать перевод");
-            FillAccs(acc_, trns_->AccountFromIdx());
-            FillAccs(cat_, trns_->ToIdx());
-            if (acc_->count() < 2 || cat_->count() < 2) {
-                acc_->setEnabled(false);
-                cat_lab_->setEnabled(false);
-            }
-            connect(acc_, &QComboBox::currentIndexChanged, this, &ModalEditor::AccChanged);
-            connect(cat_, &QComboBox::currentIndexChanged, this, &ModalEditor::CatChanged);
-        } else {
-            acc_lab_->setText("Счет:");
-            cat_lab_->setText("Категория:");
-            FillAccs(acc_, trns_->AccountFromIdx());
-            FillCats(type_ == TransactionType::Income, trns_->ToIdx());
-            setWindowTitle(type_ == TransactionType::Income ? "Редактировать доход" : "Редактировать расход");
-        }
-
-        QPushButton* done_ = new QPushButton("Готово");
-
-        layout_->addRow("", done_);
-
-        connect(done_, SIGNAL(clicked()), SLOT(ButtonPressed()));
-
-        setLayout(layout_);
-        setWindowModality(Qt::ApplicationModal);
-        setWindowOpacity(0.9);
-        setWindowFlag(Qt::Dialog);
-        setFixedSize(300, 180);
-
-    }
-
-    void closeEvent(QCloseEvent* event) override {
-        if (!NoChanges()) {
-            QMessageBox::StandardButton reply = QMessageBox::question(this, "Выберите действие", "Сохранить изменения?",
-                                                                      QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
-
-            if (reply == QMessageBox::Yes) {
-                Submit();
-                emit Updated();
-            } else if (reply == QMessageBox::Cancel) {
-                event->ignore();
-                return;
-            }
-
-        }
-
-        delete this;
-    }
-
+    ModalEditor(const Transaction* trns, Wallet& wallet, QWidget* parent = nullptr);
+    void closeEvent(QCloseEvent* event) override;
 private slots:
-    void AccChanged() {
-        if (cat_->currentIndex() == acc_->currentIndex()) {
-            if (acc_->currentIndex() == 0) {
-                cat_->setCurrentIndex(1);
-            } else {
-                cat_->setCurrentIndex(0);
-            }
-        }
-    }
-
-    void CatChanged() {
-        if (cat_->currentIndex() == acc_->currentIndex()) {
-            if (cat_->currentIndex() == 0) {
-                acc_->setCurrentIndex(1);
-            } else {
-                acc_->setCurrentIndex(0);
-            }
-        }
-    }
-
-    void ButtonPressed() {
-        if (NoChanges()) {
-            close();
-            return;
-        }
-
-        Submit();
-        emit Updated();
-        delete this;
-    }
-
-    void Submit() {
-        transactions_manager::TransactionAdder adder;
-        adder.from_idx    = acc_idx_.at(acc_->currentIndex());
-        adder.to_idx      = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
-        adder.date        = date_->date();
-        adder.sum         = sum_->value();
-        adder.type        = type_;
-        adder.description = desc_->text().trimmed();
-
-        wallet_.EditTransact(trns_->Index(), adder);
-    }
+    void AccChanged();
+    void CatChanged();
+    void ButtonPressed();
+    void Submit();
 signals:
     void Updated();
 private:
-    bool NoChanges() {
-        size_t new_from = acc_idx_.at(acc_->currentIndex());
-        QDate  new_date = date_->date();
-        Money new_sum   = sum_->value();
-        size_t new_to   = cat_idx_.at(cat_->currentIndex());
-        QString new_desc = desc_->text().trimmed();
-
-        size_t old_from  = trns_->AccountFromIdx();
-        QDate  old_date  = trns_->Date();
-        Money old_sum    = trns_->Sum();
-        size_t old_to    = trns_->ToIdx();
-        QString old_desc = trns_->GetDescription();
-
-        return new_from == old_from && new_date == old_date && new_sum == old_sum && new_to == old_to && new_desc == old_desc;
-    }
-
-    void FillAccs(QComboBox* cb, size_t idx) {
-        auto& accs = wallet_.GetAccounts();
-
-        cb->clear();
-
-        acc_idx_.clear();
-
-        for (auto& acc : accs) {
-            if (acc->IsDeleted()) {
-                cb->addItem(acc->GetName() + " (Удален)");
-            } else {
-                cb->addItem(acc->GetName());
-            }
-
-            acc_idx_.push_back(acc->GetIndex());
-
-            if (acc->GetIndex() == idx) {
-                cb->setCurrentIndex(cb->count() - 1);
-            }
-        }
-    }
-
-    void FillCats(bool inc, size_t idx) {
-        auto cats = wallet_.GetCategories(inc);
-
-        cat_->clear();
-
-        for (auto& cat : cats) {
-            cat_->addItem(QString(cat.indent, ' ') + cat.name);
-            cat_idx_.push_back(cat.idx);
-            if (cat.idx == idx) {
-                cat_->setCurrentIndex(cat_->count() - 1);
-            }
-        }
-    }
+    bool NoChanges();
+    void FillAccs(QComboBox* cb, size_t idx);
+    void FillCats(bool inc, size_t idx);
 
     const Transaction* const trns_;
     Wallet& wallet_;
@@ -224,7 +69,7 @@ private:
 
     const QVector<CategoryInfo> GetCats() const;
 
-    QListWidget* list_ = new QListWidget;
+    MyList* list_ = new MyList;
 
     QComboBox* acc_ = new QComboBox;
     QComboBox* target_ = new QComboBox;
@@ -237,10 +82,6 @@ private:
     QVector<size_t> cats_idxs_;
 
     QVector<size_t> trns_idxs_;
-
-    QLabel* inc_data_ = new QLabel;
-    QLabel* dec_data_ = new QLabel;
-    QLabel* tot_data_ = new QLabel;
 
     void showEvent(QShowEvent *event) override;
 };
