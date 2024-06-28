@@ -172,7 +172,10 @@ void TransactionEditor::FillOps() {
 
         list_->addItem(op->Date(),
                        wallet_.GetAccName(op->AccountFromIdx()),
-                       op->Sum().StringAbs(), to, transfer, op->Type() == TransactionType::Income
+                       op->Sum().StringAbs(), to,
+                       op->GetDescription(),
+                       transfer,
+                       op->Type() == TransactionType::Income
         );
 
         trns_idxs_.push_back(op->Index());
@@ -301,6 +304,14 @@ void ModalEditor::closeEvent(QCloseEvent *event) {
     }
 
     delete this;
+}
+
+void ModalEditor::keyReleaseEvent(QKeyEvent* event) {
+    if (event->key() == Qt::Key_Escape) {
+        close();
+    } else if (event->key() == Qt::Key_Return) {
+        ButtonPressed();
+    }
 }
 
 void ModalEditor::AccChanged() {

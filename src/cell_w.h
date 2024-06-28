@@ -103,6 +103,7 @@ public:
     explicit CellWindow(Wallet& wallet, MainWindow& m_window, QWidget *parent = nullptr);
     void Deactivate() override;
     void showEvent(QShowEvent *event) override;
+    void wheelEvent(QWheelEvent* event);
 private slots:
     void AddRow();
     void PopRow();

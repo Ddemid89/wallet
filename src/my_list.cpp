@@ -1,11 +1,13 @@
 #include "my_list.h"
 
 #include <QMouseEvent>
+#include <QKeyEvent>
 
 MyList::MyList(QWidget *parent) : QWidget{parent} {
     QVBoxLayout* main_layout = new QVBoxLayout;
 
-    MyLine* head = new MyLine("Дата", "Откуда", "Сумма", "Куда");
+    MyLine* head = new MyLine("Дата", "Откуда", "Сумма", "Куда", "");
+    head->SetInd(1);
     head->SetAlignment(Qt::AlignCenter);
     QHBoxLayout* inc_lyt = new QHBoxLayout;
     QHBoxLayout* dec_lyt = new QHBoxLayout;
@@ -15,13 +17,14 @@ MyList::MyList(QWidget *parent) : QWidget{parent} {
     area_->setWidget(cont_);
     cont_->setLayout(lines_lyt_);
 
-    cont_->setFixedWidth(745);
+    cont_->setFixedWidth(766);
 
     lines_lyt_->setAlignment(Qt::AlignTop);
     lines_lyt_->setSpacing(0);
     lines_lyt_->setContentsMargins(0, 0, 0, 0);
 
     main_layout->setContentsMargins(0, 0, 0, 0);
+    main_layout->setSpacing(0);
 
     MakeBasementLine("Итого доходов:", inc_lyt, inc_);
     MakeBasementLine("Итого расходов:", dec_lyt, dec_);
@@ -45,7 +48,7 @@ void MyList::clear() {
     cur_ = -1;
 }
 
-void MyList::addItem(QDate date, const QString &from, const QString &sum, const QString &to, bool transfer, bool inc) {
+void MyList::addItem(QDate date, const QString &from, const QString &sum, const QString &to, const QString &desc, bool transfer, bool inc) {
 
     char first_char;
     char quote = '(';
@@ -69,11 +72,12 @@ void MyList::addItem(QDate date, const QString &from, const QString &sum, const 
     auto new_line = new MyLine{date.toString("dd.MM.yy"),
                                "   " + from,
                                sum_res,
-                               to,
+                               to + "   ",
+                               desc
     };
     lines_.push_back(new_line);
     lines_lyt_->addWidget(new_line);
-    cont_->setFixedHeight(15 * lines_.size());
+    cont_->setFixedHeight(16 * lines_.size() + 1);
     connect(lines_.back(), &MyLine::doubleClicked, this, &MyList::itemDoubleClicked);
     connect(lines_.back(), &MyLine::clicked, [ind = lines_.size() - 1, this]{
         itemClicked(ind);
@@ -91,7 +95,24 @@ void MyList::SetSums(const QString &inc, const QString &dec, const QString &tot)
     tot_->setText(tot + ind);
 }
 
-MyLine::MyLine(const QString &date, const QString &from, const QString &sum, const QString &to) {
+void MyList::keyPressEvent(QKeyEvent *event) {
+    int new_ind;
+    switch (event->key()) {
+    case Qt::Key_Up:
+        new_ind = qMax(0, cur_ - 1);
+        itemClicked(new_ind);
+        break;
+    case Qt::Key_Down:
+        new_ind = qMin(lines_.size() - 1, cur_ + 1);
+        itemClicked(new_ind);
+        break;
+    case Qt::Key_Return:
+        emit itemDoubleClicked();
+        break;
+    }
+}
+
+MyLine::MyLine(const QString& date, const QString& from, const QString& sum, const QString& to, const QString& desc) {
     QHBoxLayout* lyt = new QHBoxLayout;
     lyt->setContentsMargins(0, 0, 0, 0);
     lyt->setSpacing(0);
@@ -132,6 +153,11 @@ MyLine::MyLine(const QString &date, const QString &from, const QString &sum, con
     line2->setAutoFillBackground(true);
     line3->setAutoFillBackground(true);
 
+    if (desc != "") {
+        setToolTip(desc);
+    } else {
+        setToolTip("Нет описания");
+    }
 
     connect(date_, &ClickableLabel::clicked, this, &MyLine::clicked);
     connect(date_, &ClickableLabel::doubleClicked, this, &MyLine::doubleClicked);
@@ -166,6 +192,10 @@ void MyLine::SetAlignment(Qt::Alignment common) {
     SetAlignment(common, common, common, common);
 }
 
+void MyLine::SetInd(size_t ind) {
+    date_->setFixedWidth(100 + ind);
+}
+
 void MyLine::SetColor(const QColor &color) {
     QPalette pl;
     pl.setColor(QPalette::Window, color);
@@ -176,6 +206,11 @@ void MyLine::SetColor(const QColor &color) {
     line1->setPalette(pl);
     line2->setPalette(pl);
     line3->setPalette(pl);
+}
+
+void MyLine::SetActive(bool act) {
+    setFrameStyle(act);
+    date_->setFixedWidth(99 + !act);
 }
 
 void MyList::MakeBasementLine(const QString &txt, QHBoxLayout *lyt, QLabel *label) {
@@ -203,14 +238,21 @@ void MyList::MakeBasementLine(const QString &txt, QHBoxLayout *lyt, QLabel *labe
 }
 
 void MyList::itemClicked(int i) {
+    if (i == cur_) {
+        return;
+    }
     QColor dis = QColor(251, 251, 251);
     QColor act = QColor(204, 204, 255);
     if (cur_ != -1) {
         lines_.at(cur_)->SetColor(dis);
+        lines_.at(cur_)->SetActive(false);
     }
     cur_ = i;
 
     lines_.at(cur_)->SetColor(act);
+    lines_.at(cur_)->SetActive(true);
+
+    setFocus();
 }
 
 void ClickableLabel::mousePressEvent(QMouseEvent *event) {

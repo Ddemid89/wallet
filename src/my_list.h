@@ -27,14 +27,16 @@ public:
 
 
 
-class MyLine : public QWidget {
+class MyLine : public QFrame {
     Q_OBJECT
 public:
-    MyLine(const QString& date, const QString& from, const QString& sum, const QString& to);
+    MyLine(const QString& date, const QString& from, const QString& sum, const QString& to, const QString& desc);
     void SetAlignment(Qt::Alignment date, Qt::Alignment from, Qt::Alignment sum, Qt::Alignment to);
     void SetAlignment(Qt::Alignment common);
+    void SetInd(size_t ind);
     QPalette t;
     void SetColor(const QColor& color);
+    void SetActive(bool act);
 signals:
     void clicked();
     void doubleClicked();
@@ -59,9 +61,10 @@ signals:
 public:
     explicit MyList(QWidget *parent = nullptr);
     void clear();
-    void addItem(QDate date, const QString& from, const QString& sum, const QString& to, bool transfer, bool inc);
+    void addItem(QDate date, const QString& from, const QString& sum, const QString& to, const QString& desc, bool transfer, bool inc);
     int currentRow();
     void SetSums(const QString& inc, const QString& dec, const QString& tot);
+    void keyPressEvent(QKeyEvent *event);
 private:
     void MakeBasementLine(const QString& txt, QHBoxLayout* lyt, QLabel* label);
     void itemClicked(int i);

@@ -6,6 +6,7 @@
 #include <QSpacerItem>
 #include <QScrollBar>
 #include <QCloseEvent>
+#include <QWheelEvent>
 
 const int DATE_W = 126;
 const int OP_W   = 85;
@@ -140,6 +141,21 @@ void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
     scroll_->setValue(scroll_->maximum());
 }
 
+void CellWindow::wheelEvent(QWheelEvent* event) {
+    if (event->position().y() < 231) {
+        int val = scroll_->value();
+        int delta = -event->angleDelta().y() / qAbs(event->angleDelta().y());
+
+        if (delta > 0) {
+            val = qMin(val + delta, scroll_->maximum());
+        } else {
+            val = qMax(val + delta, 0);
+        }
+
+        scroll_->setValue(val);
+    }
+}
+
 void CellWindow::AddRow() {
     QDate date = QDate::currentDate();
     size_t acc_idx = 0;
@@ -156,7 +172,8 @@ void CellWindow::AddRow() {
     rows_.emplaceBack(new Row(wallet_, date, acc_idx, cat_idx, op_idx));
     cells_layout_->addWidget(rows_.back());
 
-    container_->setGeometry(0, 0, 766, 70 + 23 * rows_.size());
+    container_->setGeometry(0, 0, 766, 40 + 23 * rows_.size());
+    qDebug() << rows_[0]->height();
 }
 
 void CellWindow::PopRow() {

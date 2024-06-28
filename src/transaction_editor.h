@@ -20,6 +20,7 @@ class ModalEditor : public QWidget {
 public:
     ModalEditor(const Transaction* trns, Wallet& wallet, QWidget* parent = nullptr);
     void closeEvent(QCloseEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event);
 private slots:
     void AccChanged();
     void CatChanged();
@@ -56,7 +57,6 @@ class TransactionEditor : public Widgets {
     Q_OBJECT
 public:
     explicit TransactionEditor(Wallet& wallet, MainWindow& m_window, QWidget *parent = nullptr);
-
 private slots:
     void FillTargets();
     void FillOps();
