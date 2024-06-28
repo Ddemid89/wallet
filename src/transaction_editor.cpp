@@ -350,7 +350,12 @@ bool ModalEditor::NoChanges() {
     size_t new_from = acc_idx_.at(acc_->currentIndex());
     QDate  new_date = date_->date();
     Money new_sum   = sum_->value();
-    size_t new_to   = cat_idx_.at(cat_->currentIndex());
+    size_t new_to;
+    if (type_ == TransactionType::Transfer) {
+        new_to = acc_idx_.at(cat_->currentIndex());
+    } else {
+        new_to = cat_idx_.at(cat_->currentIndex());
+    }
     QString new_desc = desc_->text().trimmed();
 
     size_t old_from  = trns_->AccountFromIdx();
