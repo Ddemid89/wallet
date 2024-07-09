@@ -11,6 +11,7 @@
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QLineEdit>
+#include <QMenu>
 #include "mainwindow.h"
 #include "model.h"
 #include "my_list.h"
@@ -26,12 +27,16 @@ private slots:
     void CatChanged();
     void ButtonPressed();
     void Submit();
+    void ShowMenu(const QPoint& point);
 signals:
     void Updated();
 private:
     bool NoChanges();
     void FillAccs(QComboBox* cb, size_t idx);
-    void FillCats(bool inc, size_t idx);
+    //void FillCats(bool inc, size_t idx);
+    void FillCatLab();
+    void MakeMenu();
+    void FillMenuChilds(QMenu& menu, const Category& info);
 
     const Transaction* const trns_;
     Wallet& wallet_;
@@ -41,15 +46,20 @@ private:
     QVector<size_t> acc_idx_;
     QVector<size_t> cat_idx_;
 
-    QDateEdit* date_     = new QDateEdit;
-    QComboBox* acc_      = new QComboBox;
-    QDoubleSpinBox* sum_ = new QDoubleSpinBox;
-    QComboBox* cat_      = new QComboBox;
+    QDateEdit* date_      = new QDateEdit;
+    QComboBox* acc_       = new QComboBox;
+    QDoubleSpinBox* sum_  = new QDoubleSpinBox;
+    QComboBox* cat_       = new QComboBox;
+
+    ClickableLabel* cat_cont_lab_ = new ClickableLabel;
+    size_t  cat_id_;
 
     QLabel* acc_lab_     = new QLabel;
     QLabel* cat_lab_     = new QLabel;
 
     QLineEdit* desc_     = new QLineEdit;
+
+    QMenu* menu_ = nullptr;
 };
 
 

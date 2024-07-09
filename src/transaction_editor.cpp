@@ -240,8 +240,6 @@ ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *paren
     layout_->addRow("Дата:",  date_);
     layout_->addRow("Сумма:", sum_);
     layout_->addRow(acc_lab_,  acc_);
-    layout_->addRow(cat_lab_,  cat_);
-    layout_->addRow("Описание:", desc_);
 
     sum_->setMinimum(0.01);
     sum_->setMaximum(1000000);
@@ -262,17 +260,27 @@ ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *paren
         FillAccs(cat_, trns_->ToIdx());
         if (acc_->count() < 2 || cat_->count() < 2) {
             acc_->setEnabled(false);
-            cat_lab_->setEnabled(false);
+            cat_->setEnabled(false);
         }
         connect(acc_, &QComboBox::currentIndexChanged, this, &ModalEditor::AccChanged);
         connect(cat_, &QComboBox::currentIndexChanged, this, &ModalEditor::CatChanged);
+        layout_->addRow(cat_lab_,  cat_);
     } else {
         acc_lab_->setText("Счет:");
         cat_lab_->setText("Категория:");
         FillAccs(acc_, trns_->AccountFromIdx());
-        FillCats(type_ == TransactionType::Income, trns_->ToIdx());
+        //FillCats(type_ == TransactionType::Income, trns_->ToIdx());
         setWindowTitle(type_ == TransactionType::Income ? "Редактировать доход" : "Редактировать расход");
+        layout_->addRow(cat_lab_, cat_cont_lab_);
+        cat_id_ = trns_->ToIdx();
+        FillCatLab();
+        cat_cont_lab_->setFrameStyle(QFrame::Box | QFrame::Plain);
+        cat_cont_lab_->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(cat_cont_lab_, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowMenu(QPoint)));
+        connect(cat_cont_lab_, SIGNAL(clicked(QPoint)), this, SLOT(ShowMenu(QPoint)));
     }
+
+    layout_->addRow("Описание:", desc_);
 
     QPushButton* done_ = new QPushButton("Готово");
 
@@ -285,7 +293,6 @@ ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *paren
     setWindowOpacity(0.9);
     setWindowFlag(Qt::Dialog);
     setFixedSize(300, 180);
-
 }
 
 void ModalEditor::closeEvent(QCloseEvent *event) {
@@ -300,7 +307,6 @@ void ModalEditor::closeEvent(QCloseEvent *event) {
             event->ignore();
             return;
         }
-
     }
 
     delete this;
@@ -348,13 +354,21 @@ void ModalEditor::ButtonPressed() {
 void ModalEditor::Submit() {
     transactions_manager::TransactionAdder adder;
     adder.from_idx    = acc_idx_.at(acc_->currentIndex());
-    adder.to_idx      = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_idx_.at(cat_->currentIndex());
+    adder.to_idx      = type_ == TransactionType::Transfer ? acc_idx_.at(cat_->currentIndex()) : cat_id_;
     adder.date        = date_->date();
     adder.sum         = sum_->value();
     adder.type        = type_;
     adder.description = desc_->text().trimmed();
 
     wallet_.EditTransact(trns_->Index(), adder);
+}
+
+void ModalEditor::ShowMenu(const QPoint& point) {
+    if (!menu_) {
+        MakeMenu();
+    }
+
+    menu_->exec(point);
 }
 
 bool ModalEditor::NoChanges() {
@@ -365,7 +379,7 @@ bool ModalEditor::NoChanges() {
     if (type_ == TransactionType::Transfer) {
         new_to = acc_idx_.at(cat_->currentIndex());
     } else {
-        new_to = cat_idx_.at(cat_->currentIndex());
+        new_to = cat_id_;
     }
     QString new_desc = desc_->text().trimmed();
 
@@ -400,16 +414,46 @@ void ModalEditor::FillAccs(QComboBox *cb, size_t idx) {
     }
 }
 
-void ModalEditor::FillCats(bool inc, size_t idx) {
-    auto cats = wallet_.GetCategories(inc);
+// void ModalEditor::FillCats(bool inc, size_t idx) {
+//     auto cats = wallet_.GetCategories(inc);
 
-    cat_->clear();
+//     cat_->clear();
 
-    for (auto& cat : cats) {
-        cat_->addItem(QString(cat.indent, ' ') + cat.name);
-        cat_idx_.push_back(cat.idx);
-        if (cat.idx == idx) {
-            cat_->setCurrentIndex(cat_->count() - 1);
+//     for (auto& cat : cats) {
+//         cat_->addItem(QString(cat.indent, ' ') + cat.name);
+//         cat_idx_.push_back(cat.idx);
+//         if (cat.idx == idx) {
+//             cat_->setCurrentIndex(cat_->count() - 1);
+//         }
+//     }
+// }
+
+void ModalEditor::FillCatLab() {
+    cat_cont_lab_->setText(wallet_.GetCatName(cat_id_));
+}
+
+void ModalEditor::MakeMenu() {
+    menu_ = new QMenu(this);
+
+    auto cat = wallet_.GetCategory(0);
+    FillMenuChilds(*menu_, *cat);
+}
+
+void ModalEditor::FillMenuChilds(QMenu& menu, const Category& cat) {
+    menu.addAction(cat.GetName(), [&cat, this]{
+        cat_id_ = cat.GetId();
+        FillCatLab();
+    });
+
+    const auto childs = cat.GetChilds();
+
+    if (!childs.empty()) {
+        QMenu* submenu = menu.addMenu("         ->");
+        for (size_t child_id : childs) {
+            auto subcat = wallet_.GetCategory(child_id);
+            FillMenuChilds(*submenu, *subcat);
         }
     }
+
+    menu.addSeparator();
 }

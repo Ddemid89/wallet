@@ -257,7 +257,7 @@ void MyList::itemClicked(int i) {
 
 void ClickableLabel::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
-        emit clicked();
+        emit clicked(event->globalPos());
     }
 }
 
