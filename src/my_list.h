@@ -7,25 +7,13 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
+#include "clickable_label.h"
 
 #ifdef Q_OS_WINDOWS
     const auto MONOSPACE_FONT = "Courier";
 #else
     const auto MONOSPACE_FONT = "Monospace";
 #endif
-
-class ClickableLabel : public QLabel {
-Q_OBJECT
-    using QLabel::QLabel;
-signals:
-    void clicked(const QPoint& point);
-    void doubleClicked();
-public:
-    void mousePressEvent(QMouseEvent* event);
-    void mouseDoubleClickEvent(QMouseEvent *event);
-};
-
-
 
 class MyLine : public QFrame {
     Q_OBJECT

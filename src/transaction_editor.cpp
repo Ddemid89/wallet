@@ -234,7 +234,8 @@ void TransactionEditor::showEvent(QShowEvent*) {
     FillData();
 }
 
-ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *parent) : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
+ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *parent)
+                            : QWidget{parent}, trns_{trns}, wallet_{wallet}, type_{trns->Type()} {
     QFormLayout* layout_ = new QFormLayout;
 
     layout_->addRow("Дата:",  date_);
@@ -413,20 +414,6 @@ void ModalEditor::FillAccs(QComboBox *cb, size_t idx) {
         }
     }
 }
-
-// void ModalEditor::FillCats(bool inc, size_t idx) {
-//     auto cats = wallet_.GetCategories(inc);
-
-//     cat_->clear();
-
-//     for (auto& cat : cats) {
-//         cat_->addItem(QString(cat.indent, ' ') + cat.name);
-//         cat_idx_.push_back(cat.idx);
-//         if (cat.idx == idx) {
-//             cat_->setCurrentIndex(cat_->count() - 1);
-//         }
-//     }
-// }
 
 void ModalEditor::FillCatLab() {
     cat_cont_lab_->setText(wallet_.GetCatName(cat_id_));

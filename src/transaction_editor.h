@@ -33,7 +33,6 @@ signals:
 private:
     bool NoChanges();
     void FillAccs(QComboBox* cb, size_t idx);
-    //void FillCats(bool inc, size_t idx);
     void FillCatLab();
     void MakeMenu();
     void FillMenuChilds(QMenu& menu, const Category& info);

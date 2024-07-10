@@ -9,6 +9,8 @@
 #include <QComboBox>
 #include <QVector>
 #include <QCheckBox>
+#include <QMenu>
+#include "clickable_label.h"
 
 class CategoryEditor : public QWidget {
     Q_OBJECT
@@ -21,19 +23,26 @@ private slots:
     void IncChange();
     void DecChange();
     void Done();
+    void ShowMenu(const QPoint& point);
 private:
-    void FillParents();
     bool HasChanges();
     void SaveChanges();
 
-    QLineEdit* name_   = new QLineEdit;
-    QComboBox* parent_ = new QComboBox;
-    QCheckBox* inc_    = new QCheckBox(" - для доходов");
-    QCheckBox* dec_    = new QCheckBox(" - для расходов");
+    void FillParentLab();
+    void MakeMenu();
+    void FillMenuChilds(QMenu& menu, const Category& info);
+
+    QLineEdit* name_        = new QLineEdit;
+    ClickableLabel* parent_ = new ClickableLabel;
+    QCheckBox* inc_         = new QCheckBox(" - для доходов");
+    QCheckBox* dec_         = new QCheckBox(" - для расходов");
 
     Wallet& wallet_;
     size_t cat_id_;
     const Category* cat_;
+
+    QMenu* menu_ = nullptr;
+    size_t parent_id_;
 
     QVector<size_t> cats_idx_;
 };

@@ -23,6 +23,7 @@ HEADERS += src/json_loader.h \
            src/binary_loader.h \
            src/category_editor.h \
            src/cell_w.h \
+           src/clickable_label.h \
            src/domain.h \
            src/file_system.h \
            src/first_window.h \
@@ -42,6 +43,7 @@ SOURCES += src/json_loader.cpp \
            src/binary_loader.cpp \
            src/category_editor.cpp \
            src/cell_w.cpp \
+           src/clickable_label.cpp \
            src/domain.cpp \
            src/file_system.cpp \
            src/first_window.cpp \

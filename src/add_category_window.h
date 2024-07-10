@@ -6,6 +6,7 @@
 #include <optional>
 #include <QLineEdit>
 #include <QCheckBox>
+#include <QTreeWidget>
 
 #include "mainwindow.h"
 #include "model.h"
@@ -27,13 +28,16 @@ private:
     void showEvent(QShowEvent *event) override;
     void FillCategories(size_t n = 0);
 
+    void AddChildToTree(QTreeWidgetItem* item, const Category* cat, size_t id);
+    void UpdateCat(QTreeWidgetItem* item);
+
     std::optional<QVector<CategoryInfo>> cats_;
 
     QCheckBox* to_inc_ = new QCheckBox;
     QCheckBox* to_dec_ = new QCheckBox;
     QPushButton* edit_  = new QPushButton("Редактировать");
 
-    QListWidget* list_view = new QListWidget;
+    QTreeWidget* tree_view_ = new QTreeWidget;
     QLineEdit* name_ = new QLineEdit;
 };
 

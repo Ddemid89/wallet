@@ -26,9 +26,12 @@ AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidg
 
     edit_->setFixedWidth(120);
 
+    tree_view_->setColumnCount(3);
+    tree_view_->setHeaderLabels({"Название", "Доход", "Расход"});
+
     layout_->addWidget(back_);
     layout_->addWidget(lab);
-    layout_->addWidget(list_view);
+    layout_->addWidget(tree_view_);
     layout_->addWidget(edit_, 0, Qt::AlignCenter);
     layout_->addWidget(lab2);
     layout_->addLayout(input_layout);
@@ -38,16 +41,13 @@ AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidg
 
     connect(submit, SIGNAL(clicked()), this, SLOT(submit()));
     connect(edit_, &QPushButton::clicked, this, &AddCategoryWindow::Edit);
-    connect(list_view, &QListWidget::doubleClicked, this, &AddCategoryWindow::Edit);
+    connect(tree_view_, &QTreeWidget::doubleClicked, this, &AddCategoryWindow::Edit);
 
     connect(to_inc_, &QCheckBox::stateChanged, [this](){
         if (to_inc_->isChecked() == false) {
             to_dec_->setChecked(true);
         }
     });
-
-    QFont fnt("Monospace");
-    list_view->setFont(fnt);
 
     connect(to_dec_, &QCheckBox::stateChanged, [this](){
         if (to_dec_->isChecked() == false) {
@@ -63,6 +63,7 @@ AddCategoryWindow::AddCategoryWindow(Wallet& wallet, MainWindow& m_window, QWidg
 }
 
 void AddCategoryWindow::submit() {
+    static const char* chars[] = {" ", "V"};
     QString name = name_->text();
     name = name.trimmed();
 
@@ -74,22 +75,31 @@ void AddCategoryWindow::submit() {
     bool inc = to_inc_->isChecked();
     bool dec = to_dec_->isChecked();
 
-    size_t parrent_idx = cats_->at(list_view->currentRow()).idx;
+    size_t parrent_idx = tree_view_->currentItem()->type();
 
-    wallet_.AddCategory(name, parrent_idx, inc, dec);
+    auto new_id = wallet_.AddCategory(name, parrent_idx, inc, dec);
 
     emit(m_window_.show_status("Категория \"" + name + "\" добавлена!"));
 
-    FillData(parrent_idx);
+    QTreeWidgetItem* new_item = new QTreeWidgetItem({name, chars[inc], chars[dec]}, new_id);
+
+    tree_view_->currentItem()->addChild(new_item);
+
+    auto parent = new_item->parent();
+    while (parent) {
+        UpdateCat(parent);
+        parent = parent->parent();
+    }
 }
 
 void AddCategoryWindow::Edit() {
-    int cur_row = list_view->currentRow();
-    if (cur_row == -1 || cur_row == 0) {
+    auto cur_item = tree_view_->currentItem();
+
+    if (!cur_item) {
         return;
     }
 
-    size_t cat_id = cats_->at(cur_row).idx;
+    size_t cat_id = cur_item->type();
 
     if (cat_id == 0) {
         return;
@@ -102,7 +112,7 @@ void AddCategoryWindow::Edit() {
 
 void AddCategoryWindow::Update() {
     cats_.reset();
-    size_t idx = cats_->at(list_view->currentRow()).idx;
+    size_t idx = tree_view_->currentItem()->type();
     FillCategories(idx);
 }
 
@@ -117,38 +127,51 @@ void AddCategoryWindow::showEvent(QShowEvent*) {
     FillData();
 }
 
-void AddCategoryWindow::FillCategories(size_t n) {
-    const QString types[] = {"+", "-", "+-"};
+void AddCategoryWindow::FillCategories(size_t id) {
     if (!cats_.has_value()) {
         cats_ = wallet_.GetAllCategories();
     }
 
-    list_view->clear();
+    const Category* main = wallet_.GetCategory(0);
 
-    for (CategoryInfo& category : *cats_) {
-        QString item;
-        if (category.indent != 0) {
-            item = "    ";
-        }
-        for (int i = 0; i < category.indent - 1; ++i) {
-            if (i == category.indent - 2) {
-                item += "|--";
-            } else {
-                item += "|  ";
-            }
-        }
-        if (category.indent != 0) {
-            item += "+---";
-        }
+    tree_view_->clear();
+    tree_view_->setColumnWidth(0, 500);
+    QTreeWidgetItem* root = new QTreeWidgetItem({"Все категории", "V", "V"});
+    tree_view_->addTopLevelItem(root);
 
-        item += category.name + " (";
-
-        item += types[static_cast<int>(category.type_)] + ")";
-
-        list_view->addItem(item);
-
-        if (category.idx == n) {
-            list_view->setCurrentRow(list_view->count() - 1);
-        }
+    if (id == 0) {
+        tree_view_->setCurrentItem(root);
     }
+
+    for (size_t cat_id : main->GetChilds()) {
+        auto cat = wallet_.GetCategory(cat_id);
+        AddChildToTree(root, cat, id);
+    }
+
+}
+
+void AddCategoryWindow::AddChildToTree(QTreeWidgetItem* item, const Category* cat, size_t id) {
+    static const char* chars[] = {" ", "V"};
+    QTreeWidgetItem* new_item = new QTreeWidgetItem({cat->GetName(),
+                                                     chars[cat->isInc()],
+                                                     chars[cat->isDec()]
+                                                    }, cat->GetId());
+
+    item->addChild(new_item);
+    if (cat->GetId() == id) {
+        tree_view_->setCurrentItem(new_item);
+    }
+
+    for (size_t cat_id : cat->GetChilds()) {
+        auto cur_cat = wallet_.GetCategory(cat_id);
+        AddChildToTree(new_item, cur_cat, id);
+    }
+}
+
+void AddCategoryWindow::UpdateCat(QTreeWidgetItem* item) {
+    auto cat = wallet_.GetCategory(item->type());
+
+    item->setText(0, cat->GetName());
+    item->setText(1, (cat->isInc() ? "V" : " "));
+    item->setText(2, (cat->isDec() ? "V" : " "));
 }

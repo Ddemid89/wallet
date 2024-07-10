@@ -47,7 +47,14 @@ CategoryEditor::CategoryEditor(Wallet& wallet, size_t cat_id, QWidget* parent)
 
     connect(done, &QPushButton::clicked, this, &CategoryEditor::Done);
 
-    FillParents();
+    parent_id_ = cat_->GetParentId();
+
+    parent_->setFrameStyle(QFrame::Box | QFrame::Plain);
+    parent_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(parent_, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ShowMenu(QPoint)));
+    connect(parent_, SIGNAL(clicked(QPoint)), this, SLOT(ShowMenu(QPoint)));
+
+    FillParentLab();
     setLayout(form_layout);
 }
 
@@ -97,31 +104,9 @@ void CategoryEditor::Done() {
     delete this;
 }
 
-void CategoryEditor::FillParents() {
-    auto cats = wallet_.GetAllCategories();
-    size_t parent_idx = cat_->GetParentId();
-
-    auto childs = wallet_.GetCategoryChilds(cat_id_);
-
-    std::unordered_set<size_t> bad_parents{childs.begin(), childs.end()};
-    bad_parents.insert(cat_id_);
-
-    for (auto& cat : cats) {
-        if (bad_parents.count(cat.idx) == 0) {
-            parent_->addItem(QString(cat.indent * 2, ' ') + cat.name);
-            cats_idx_.push_back(cat.idx);
-
-            if (cat.idx == parent_idx) {
-                parent_->setCurrentIndex(parent_->count() - 1);
-            }
-        }
-    }
-
-}
-
 bool CategoryEditor::HasChanges() {
     bool name_changed   = cat_->GetName()     != name_->text().trimmed();
-    bool parent_changed = cat_->GetParentId() != cats_idx_.at(parent_->currentIndex());
+    bool parent_changed = cat_->GetParentId() != parent_id_;
     bool inc_changed    = cat_->isInc()       != inc_->isChecked();
     bool dec_changed    = cat_->isDec()       != dec_->isChecked();
     return name_changed || parent_changed || inc_changed || dec_changed;
@@ -129,11 +114,49 @@ bool CategoryEditor::HasChanges() {
 
 void CategoryEditor::SaveChanges() {
     QString new_name   = name_->text().trimmed();
-    size_t  new_parent = cats_idx_.at(parent_->currentIndex());
+    size_t  new_parent = parent_id_;
     bool    new_inc    = inc_->isChecked();
     bool    new_dec    = dec_->isChecked();
 
     wallet_.EditCategory(cat_id_, new_name, new_parent, new_inc, new_dec);
 
     emit Changed();
+}
+
+void CategoryEditor::FillParentLab() {
+    parent_->setText(wallet_.GetCategory(parent_id_)->GetName());
+}
+
+void CategoryEditor::ShowMenu(const QPoint& point) {
+    if (!menu_) {
+        MakeMenu();
+    }
+
+    menu_->exec(point);
+}
+
+void CategoryEditor::MakeMenu() {
+    menu_ = new QMenu(this);
+
+    auto cat = wallet_.GetCategory(0);
+    FillMenuChilds(*menu_, *cat);
+}
+
+void CategoryEditor::FillMenuChilds(QMenu& menu, const Category& cat) {
+    menu.addAction(cat.GetName(), [&cat, this]{
+        parent_id_ = cat.GetId();
+        FillParentLab();
+    });
+
+    const auto childs = cat.GetChilds();
+
+    if (!childs.empty()) {
+        QMenu* submenu = menu.addMenu("         ->");
+        for (size_t child_id : childs) {
+            auto subcat = wallet_.GetCategory(child_id);
+            FillMenuChilds(*submenu, *subcat);
+        }
+    }
+
+    menu.addSeparator();
 }
