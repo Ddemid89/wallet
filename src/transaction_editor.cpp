@@ -364,11 +364,19 @@ void ModalEditor::Submit() {
 }
 
 void ModalEditor::ShowMenu(const QPoint& point) {
-    if (!menu_) {
-        MakeMenu();
+    if (!inc_menu_) {
+        MakeMenus();
     }
 
-    menu_->exec(point);
+    if (trns_->Type() == TransactionType::Income) {
+        inc_menu_->exec(point);
+    } else if (trns_->Type() == TransactionType::Expense) {
+        dec_menu_->exec(point);
+    } else {
+        throw std::logic_error("Something wrong in ModalEditor::ShowMenu.");
+    }
+
+
 }
 
 bool ModalEditor::NoChanges() {
@@ -418,14 +426,17 @@ void ModalEditor::FillCatLab() {
     cat_cont_lab_->setText(wallet_.GetCatName(cat_id_));
 }
 
-void ModalEditor::MakeMenu() {
-    menu_ = new QMenu(this);
+void ModalEditor::MakeMenus() {
+    inc_menu_ = new QMenu(this);
+    dec_menu_ = new QMenu(this);
+
 
     auto cat = wallet_.GetCategory(0);
-    FillMenuChilds(*menu_, *cat);
+    FillMenuChilds(*inc_menu_, *cat, true);
+    FillMenuChilds(*dec_menu_, *cat, false);
 }
 
-void ModalEditor::FillMenuChilds(QMenu& menu, const Category& cat) {
+void ModalEditor::FillMenuChilds(QMenu& menu, const Category& cat, bool inc) {
     menu.addAction(cat.GetName(), [&cat, this]{
         cat_id_ = cat.GetId();
         FillCatLab();
@@ -433,11 +444,19 @@ void ModalEditor::FillMenuChilds(QMenu& menu, const Category& cat) {
 
     const auto childs = cat.GetChilds();
 
-    if (!childs.empty()) {
-        QMenu* submenu = menu.addMenu("         ->");
-        for (size_t child_id : childs) {
-            auto subcat = wallet_.GetCategory(child_id);
-            FillMenuChilds(*submenu, *subcat);
+    bool is_first = true;
+
+    QMenu* submenu;
+    for (size_t child_id : childs) {
+        auto subcat = wallet_.GetCategory(child_id);
+        if ((subcat->isInc() && inc) || (subcat->isDec() && !inc)) {
+            if (is_first) {
+                submenu = menu.addMenu("         ->");
+            }
+
+            is_first = false;
+
+            FillMenuChilds(*submenu, *subcat, inc);
         }
     }
 

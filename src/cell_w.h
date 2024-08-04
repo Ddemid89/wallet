@@ -13,8 +13,66 @@
 #include <QDateEdit>
 #include "model.h"
 #include "mainwindow.h"
+#include "clickable_label.h"
 #include <QScrollBar>
 #include <QLineEdit>
+#include <QMenu>
+#include <QStackedWidget>
+
+class MenuWrapper {
+public:
+    MenuWrapper(const Wallet& wallet, QWidget* parent) {
+        inc_menu_ = new QMenu{parent};
+        dec_menu_ = new QMenu{parent};
+
+        auto cat = wallet.GetCategory(0);
+        FillMenuChilds(wallet, *inc_menu_, *cat, true);
+        FillMenuChilds(wallet, *dec_menu_, *cat, false);
+    }
+
+    QMenu* GetMenu(size_t* field, QLabel* lab, bool inc) {
+        cat_id_field_ = field;
+        lab_ = lab;
+        if (inc) {
+            return inc_menu_;
+        }
+        return dec_menu_;
+    }
+private:
+
+    void FillMenuChilds(const Wallet& wallet, QMenu& menu, const Category& cat, bool inc) {
+        menu.addAction(cat.GetName(), [&cat, this]{
+            *cat_id_field_ = cat.GetId();
+            lab_->setText(cat.GetName());
+        });
+
+        const auto childs = cat.GetChilds();
+
+        bool is_first = true;
+
+        QMenu* submenu;
+        for (size_t child_id : childs) {
+            auto subcat = wallet.GetCategory(child_id);
+            if ((subcat->isInc() && inc) || (subcat->isDec() && !inc)) {
+                if (is_first) {
+                    submenu = menu.addMenu("         ->");
+                }
+
+                is_first = false;
+
+                FillMenuChilds(wallet, *submenu, *subcat, inc);
+            }
+        }
+
+        menu.addSeparator();
+    }
+
+    QMenu* inc_menu_;
+    QMenu* dec_menu_;
+\
+    size_t* cat_id_field_;
+    QLabel* lab_;
+};
 
 const int RECENT_LINES = 10;
 
@@ -52,7 +110,7 @@ private:
 class Row : public QWidget {
     Q_OBJECT
 public:
-    Row(Wallet& wallet, QDate date = QDate::currentDate(), size_t acc = 0, size_t cat = 0, size_t op = 0, QWidget* parent = nullptr);
+    Row(Wallet& wallet, MenuWrapper& menu_wrapper, QDate date = QDate::currentDate(), size_t acc = 0, size_t cat = 0, size_t op = 0, QWidget* parent = nullptr);
 
     CellTransaction Get();
     QDate GetDate() const;
@@ -66,6 +124,7 @@ private slots:
     void ChangeOp();
     void ChangeAcc();
     void ChangeCat();
+    void ShowMenu(const QPoint&);
 private:
     void FillAcs(QComboBox& cb);
     void FillCats(bool inc);
@@ -73,13 +132,18 @@ private:
     Wallet& wallet_;
 
     QVector<int> acc_idx_;
-    QVector<int> cat_idx_;
+
+    MenuWrapper& menu_wrapper_;
+    size_t cat_id_ = 0;
 
     QDateEdit* date_label_ = new QDateEdit;
     QDoubleSpinBox* sum_   = new QDoubleSpinBox;
     QComboBox* op_         = new QComboBox;
     QComboBox* acc_from_   = new QComboBox;
-    QComboBox* acc_cat_to_ = new QComboBox;
+
+    QStackedWidget* acc_cat_widget_ = new QStackedWidget;
+    QComboBox*      acc_cat_to_ = new QComboBox;
+    ClickableLabel* acc_cat_to_label_ = new ClickableLabel("Все категории");
 
     QPushButton* add_desc_ = new QPushButton("+ Описание");
     QString potential_description_;
@@ -100,7 +164,7 @@ private:
 class CellWindow : public Widgets {
     Q_OBJECT
 public:
-    explicit CellWindow(Wallet& wallet, MainWindow& m_window, QWidget *parent = nullptr);
+    CellWindow(Wallet& wallet, MainWindow& m_window, QWidget *parent = nullptr);
     void Deactivate() override;
     void showEvent(QShowEvent *event) override;
     void wheelEvent(QWheelEvent* event);
@@ -109,6 +173,8 @@ private slots:
     void PopRow();
     void FillRecent();
     void Done();
+
+
 private:
     void AddTransaction(CellTransaction&& ct);
 
@@ -118,6 +184,8 @@ private:
     void DeleteRows();
 
     void GetAndFillRecent();
+
+    MenuWrapper* menu_wrapper_ = nullptr;
 
     QVector<Row*> rows_;
 

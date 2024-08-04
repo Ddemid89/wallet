@@ -34,8 +34,8 @@ private:
     bool NoChanges();
     void FillAccs(QComboBox* cb, size_t idx);
     void FillCatLab();
-    void MakeMenu();
-    void FillMenuChilds(QMenu& menu, const Category& info);
+    void MakeMenus();
+    void FillMenuChilds(QMenu& menu, const Category& info, bool inc);
 
     const Transaction* const trns_;
     Wallet& wallet_;
@@ -43,7 +43,6 @@ private:
     const TransactionType type_;
 
     QVector<size_t> acc_idx_;
-    QVector<size_t> cat_idx_;
 
     QDateEdit* date_      = new QDateEdit;
     QComboBox* acc_       = new QComboBox;
@@ -58,7 +57,8 @@ private:
 
     QLineEdit* desc_     = new QLineEdit;
 
-    QMenu* menu_ = nullptr;
+    QMenu* inc_menu_ = nullptr;
+    QMenu* dec_menu_ = nullptr;
 };
 
 

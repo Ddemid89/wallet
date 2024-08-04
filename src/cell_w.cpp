@@ -139,6 +139,9 @@ void CellWindow::showEvent([[maybe_unused]]QShowEvent *event) {
 
     FillRecent();
     scroll_->setValue(scroll_->maximum());
+
+    delete menu_wrapper_;
+    menu_wrapper_ = new MenuWrapper{wallet_, this};
 }
 
 void CellWindow::wheelEvent(QWheelEvent* event) {
@@ -169,7 +172,7 @@ void CellWindow::AddRow() {
         op_idx  = rows_.back()->GetOp();
     }
 
-    rows_.emplaceBack(new Row(wallet_, date, acc_idx, cat_idx, op_idx));
+    rows_.emplaceBack(new Row(wallet_, *menu_wrapper_, date, acc_idx, cat_idx, op_idx));
     cells_layout_->addWidget(rows_.back());
 
     container_->setGeometry(0, 0, 766, 40 + 23 * rows_.size());
@@ -182,6 +185,7 @@ void CellWindow::PopRow() {
     cells_layout_->removeWidget(rows_.back());
     delete rows_.back();
     rows_.pop_back();
+    container_->setGeometry(0, 0, 766, 40 + 23 * rows_.size());
 }
 
 void CellWindow::FillRecent() {
@@ -250,8 +254,8 @@ void CellWindow::GetAndFillRecent() {
 }
 
 
-Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget *parent)
-    : QWidget{parent}, wallet_{wallet} {
+Row::Row(Wallet &wallet, MenuWrapper& menu_wrapper, QDate date, size_t acc, size_t cat, size_t op, QWidget *parent)
+    : QWidget{parent}, wallet_{wallet}, menu_wrapper_{menu_wrapper} {
     QHBoxLayout* layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -284,8 +288,18 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     layout->addWidget(op_);
     layout->addWidget(sum_);
     layout->addWidget(acc_from_);
-    layout->addWidget(acc_cat_to_);
+    layout->addWidget(acc_cat_widget_);
     layout->addWidget(add_desc_);
+
+    acc_cat_widget_->addWidget(acc_cat_to_label_);
+    acc_cat_widget_->addWidget(acc_cat_to_);
+    acc_cat_to_label_->setFrameStyle(QFrame::Box | QFrame::Plain);
+
+    connect(acc_cat_to_label_, SIGNAL(clicked(QPoint)), this, SLOT(ShowMenu(QPoint)));
+
+    if (op == 2) {
+        acc_cat_widget_->setCurrentIndex(1);
+    }
 
     connect(add_desc_, &QPushButton::clicked, [this]{
         ModalDescriptionEditor* mde = new ModalDescriptionEditor(*this);
@@ -304,6 +318,8 @@ Row::Row(Wallet &wallet, QDate date, size_t acc, size_t cat, size_t op, QWidget 
     acc_cat_to_->setCurrentIndex(cat);
 
     setContentsMargins(0, 0, 0, 0);
+
+    acc_cat_to_->setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
 CellTransaction Row::Get() {
@@ -312,11 +328,11 @@ CellTransaction Row::Get() {
     switch (op_->currentIndex()) {
     case 0:
         res.type = OpType::Dec;
-        res.to   = cat_idx_.at(acc_cat_to_->currentIndex());
+        res.to   = cat_id_;
         break;
     case 1:
         res.type = OpType::Inc;
-        res.to   = cat_idx_.at(acc_cat_to_->currentIndex());
+        res.to   = cat_id_;
         break;
     case 2:
         res.type = OpType::Transfer;
@@ -358,16 +374,18 @@ void Row::ChangeOp() {
     if (op_id == 0) {
         pal.setColor(QPalette::Text, Qt::red);
         FillCats(false);
+        acc_cat_widget_->setCurrentIndex(0);
     } else if (op_id == 1) {
         pal.setColor(QPalette::Text, Qt::green);
         FillCats(true);
+        acc_cat_widget_->setCurrentIndex(0);
     } else {
-        acc_cat_to_->setEnabled(true);
         pal.setColor(QPalette::Text, Qt::blue);
         FillAcs(*acc_cat_to_);
         if (acc_from_->currentIndex() == 0) {
             acc_cat_to_->setCurrentIndex(1);
         }
+        acc_cat_widget_->setCurrentIndex(1);
     }
 
     sum_->setPalette(pal);
@@ -397,6 +415,15 @@ void Row::ChangeCat() {
     }
 }
 
+void Row::ShowMenu(const QPoint& point){
+    uint op_id = op_->currentIndex();
+
+    bool inc = op_id == 1;
+
+    auto menu = menu_wrapper_.GetMenu(&cat_id_, acc_cat_to_label_, inc);
+    menu->exec(point);
+}
+
 
 void Row::FillAcs(QComboBox &cb) {
     auto& accs = wallet_.GetAccounts();
@@ -414,18 +441,15 @@ void Row::FillAcs(QComboBox &cb) {
 }
 
 void Row::FillCats(bool inc) {
-    auto cats = wallet_.GetCategories(inc);
+    auto inc_dec = wallet_.GetCategory(cat_id_)->GetType();
+    bool norm = inc_dec == CategoryType::Both
+                || (inc_dec == CategoryType::Inc && inc)
+                || (inc_dec == CategoryType::Dec && !inc);
 
-    acc_cat_to_->clear();
-    cat_idx_.clear();
-
-    acc_cat_to_->setEnabled(false);
-
-    for (auto& cat : cats) {
-        acc_cat_to_->addItem(QString(cat.indent, ' ') + cat.name);
-        cat_idx_.push_back(cat.idx);
+    if (!norm) {
+        cat_id_ = 0;
+        acc_cat_to_label_->setText(wallet_.GetCatName(cat_id_));
     }
-
 }
 
 QString Row::GetDescription() const {
