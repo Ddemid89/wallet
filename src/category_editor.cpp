@@ -143,6 +143,10 @@ void CategoryEditor::MakeMenu() {
 }
 
 void CategoryEditor::FillMenuChilds(QMenu& menu, const Category& cat) {
+    if (cat_id_ == cat.GetId()) {
+        return;
+    }
+
     menu.addAction(cat.GetName(), [&cat, this]{
         parent_id_ = cat.GetId();
         FillParentLab();

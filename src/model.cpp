@@ -183,14 +183,6 @@ void Wallet::EditCategory(size_t idx, QString new_name, size_t new_parent, bool 
         old_parent_ptr->DeleteChild(idx);
         new_parent_ptr->AddChild(*cat_ptr);
     }
-
-    // if (new_parent_ptr && inc) {
-    //     new_parent_ptr->SetInc();
-    // }
-
-    // if (new_parent_ptr && dec) {
-    //     new_parent_ptr->SetDec();
-    // }
 }
 
 void Wallet::AddTransaction(transactions_manager::TransactionAdder transact) {
@@ -359,11 +351,12 @@ void Wallet::RestoreOneAccount(model_representation::AccountRepresentation&& acc
 }
 
 void Wallet::RestoreOneCategory(model_representation::CategoryRepresentation&& cat) {
-    Category* parent = &GetCategoryById(cat.parent_id);
+    Category* parent  = &GetCategoryById(cat.parent_id);
+    Category* new_cat = &GetCategoryById(cat.id);
 
-    categories_.emplace_back(cat, parent);
+    Category tmp{std::move(cat), parent};
 
-    cats_index_[cat.id] = &categories_.back();
+    new_cat->CopyNameIncDec(tmp);
 }
 
 QVector<model_representation::AccountRepresentation> Wallet::GetAccsRepresentation() const {
@@ -403,7 +396,9 @@ Category& Wallet::GetCategoryById(size_t id) {
         return *it->second;
     }
 
-    throw std::invalid_argument("Нет категории с таким ID!");
+    categories_.emplace_back(id, "Что-то не так", 1, 1);
+    cats_index_[id] = &categories_.back();
+    return categories_.back();
 }
 
 void Wallet::AddCatAndChilds(size_t index, QVector<CategoryInfo>& result, int indent, bool inc, bool dec) const {

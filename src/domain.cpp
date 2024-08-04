@@ -226,6 +226,12 @@ void Category::EditCategory(QString new_name, Category *new_parent, bool inc, bo
     }
 }
 
+void Category::CopyNameIncDec(Category& other) {
+    name_    = other.name_;
+    inc_dec_ = other.inc_dec_;
+    parent_  = other.parent_;
+}
+
 model_representation::CategoryRepresentation Category::GetRepresentation() const {
     model_representation::CategoryRepresentation res;
 
@@ -246,7 +252,6 @@ void Category::SetInc() {
     if (inc_dec_ == CategoryType::Dec) {
         inc_dec_ = CategoryType::Both;
     }
-    inc_dec_ = CategoryType::Both;
     if (parent_ != nullptr) {
         parent_->SetInc();
     }

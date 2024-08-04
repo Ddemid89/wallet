@@ -309,6 +309,8 @@ public:
         childs_.erase(std::remove(childs_.begin(), childs_.end(), idx), childs_.end());
     }
 
+    void CopyNameIncDec(Category& other);
+
     model_representation::CategoryRepresentation GetRepresentation() const;
 private:
     void SetInc();

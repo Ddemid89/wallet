@@ -12,7 +12,7 @@ const int DATE_W = 126;
 const int OP_W   = 85;
 const int SUM_W  = 120;
 const int FROM_W = 150;
-const int DESC_W = 75;
+const int DESC_W = 95;
 
 namespace {
 QLabel* GetLabel(const QString& txt, int w = 0, bool bold = true, int frame = 2) {
@@ -173,7 +173,6 @@ void CellWindow::AddRow() {
     cells_layout_->addWidget(rows_.back());
 
     container_->setGeometry(0, 0, 766, 40 + 23 * rows_.size());
-    qDebug() << rows_[0]->height();
 }
 
 void CellWindow::PopRow() {
@@ -363,6 +362,7 @@ void Row::ChangeOp() {
         pal.setColor(QPalette::Text, Qt::green);
         FillCats(true);
     } else {
+        acc_cat_to_->setEnabled(true);
         pal.setColor(QPalette::Text, Qt::blue);
         FillAcs(*acc_cat_to_);
         if (acc_from_->currentIndex() == 0) {
@@ -418,6 +418,8 @@ void Row::FillCats(bool inc) {
 
     acc_cat_to_->clear();
     cat_idx_.clear();
+
+    acc_cat_to_->setEnabled(false);
 
     for (auto& cat : cats) {
         acc_cat_to_->addItem(QString(cat.indent, ' ') + cat.name);

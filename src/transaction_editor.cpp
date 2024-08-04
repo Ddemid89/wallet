@@ -270,7 +270,6 @@ ModalEditor::ModalEditor(const Transaction *trns, Wallet &wallet, QWidget *paren
         acc_lab_->setText("Счет:");
         cat_lab_->setText("Категория:");
         FillAccs(acc_, trns_->AccountFromIdx());
-        //FillCats(type_ == TransactionType::Income, trns_->ToIdx());
         setWindowTitle(type_ == TransactionType::Income ? "Редактировать доход" : "Редактировать расход");
         layout_->addRow(cat_lab_, cat_cont_lab_);
         cat_id_ = trns_->ToIdx();
