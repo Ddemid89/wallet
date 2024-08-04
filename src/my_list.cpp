@@ -58,16 +58,16 @@ void MyList::addItem(QDate date, const QString &from, const QString &sum, const 
     if (transfer) {
         first_char = '-';
         quote = '[';
-        sum_res = sum + " руб.]---->       ";
+        sum_res = sum + " руб.]---->   ";
     } else if (inc) {
         first_char = '-';
-        sum_res = sum + " руб.)---->       ";
+        sum_res = sum + " руб.)---->   ";
     } else {
         first_char = '<';
-        sum_res = sum + " руб.)-----       ";
+        sum_res = sum + " руб.)-----   ";
     }
 
-    sum_res = QString(first_char) + QString(30 - sum_res.size(), '-') + QString(quote) + sum_res;
+    sum_res = QString(first_char) + QString(25 - sum_res.size(), '-') + QString(quote) + sum_res;
 
     auto new_line = new MyLine{date.toString("dd.MM.yy"),
                                "   " + from,
@@ -130,7 +130,7 @@ MyLine::MyLine(const QString& date, const QString& from, const QString& sum, con
     from_->setFixedSize(150, 15);
     from_->setAlignment(Qt::AlignLeft);
 
-    sum_->setFixedSize(300, 15);
+    sum_->setFixedSize(250, 15);
     sum_->setAlignment(Qt::AlignRight);
 
     to_->setFixedHeight(15);
@@ -223,7 +223,7 @@ void MyList::MakeBasementLine(const QString &txt, QHBoxLayout *lyt, QLabel *labe
 
     beg->setFixedWidth(101);
     info->setFixedWidth(150);
-    label->setFixedWidth(300);
+    label->setFixedWidth(250);
 
     info->setAlignment(Qt::AlignRight);
     label->setAlignment(Qt::AlignRight);

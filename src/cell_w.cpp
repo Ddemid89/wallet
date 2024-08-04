@@ -318,6 +318,7 @@ Row::Row(Wallet &wallet, MenuWrapper& menu_wrapper, QDate date, size_t acc, size
     acc_cat_to_->setCurrentIndex(cat);
 
     setContentsMargins(0, 0, 0, 0);
+    setFixedHeight(23);
 
     acc_cat_to_->setContextMenuPolicy(Qt::CustomContextMenu);
 }
